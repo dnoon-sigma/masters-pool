@@ -114,9 +114,9 @@ export default function MyScorePage() {
   const scores = golferData.map(({ card, golfer }) => card?.totalPoints ?? golfer.score ?? 0)
   const minScore = Math.min(...scores)
   // In case of tie for last, only dim the last one displayed (already sorted best-to-worst)
-  const tiebreakerIndex = golferData.length - 1
+  const tiebreakerIndex = 4 // index 4 and 5 are tiebreakers
 
-  const teamTotal = scores.slice(0, 5).reduce((a, b) => a + b, 0)
+  const teamTotal = scores.slice(0, 4).reduce((a, b) => a + b, 0)
 
   return (
     <div className="min-h-screen flex flex-col" style={{ backgroundColor: '#f9f6f0' }}>
@@ -137,12 +137,12 @@ export default function MyScorePage() {
         </div>
 
         <p className="text-xs text-gray-400 mb-6">
-          Golfers sorted best to worst. Your lowest scorer is automatically the tiebreaker.
+          Golfers sorted best to worst. Your 5th and 6th lowest scorers are automatically tiebreakers.
         </p>
 
         <div className="space-y-4">
           {golferData.map(({ golfer, card }, index) => {
-            const isTiebreaker = index === tiebreakerIndex
+            const isTiebreaker = index >= tiebreakerIndex
             const contestScore = card?.totalPoints ?? golfer.score ?? 0
             const isOpen = openGolfer === golfer.id
             const hasHoleData = card?.rounds?.some(r => r.holes.length > 0)

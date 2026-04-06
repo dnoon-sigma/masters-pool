@@ -133,7 +133,7 @@ export default function HomePage() {
               {
                 step: '3',
                 title: 'Win the Pool',
-                desc: 'Your score is the sum of your best 5 of 6 golfers. Your lowest scorer at any time is automatically the tiebreaker.',
+                desc: 'Your score is the sum of your best 4 of 6 golfers. Your 5th and 6th lowest scorers are automatic tiebreakers.',
               },
             ].map(({ step, title, desc }) => (
               <div key={step} className="text-center">

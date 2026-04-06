@@ -21,7 +21,7 @@ export default function PicksPage() {
   const [user, setUser] = useState(null)
   const [golfers, setGolfers] = useState([])
   const [existingPicks, setExistingPicks] = useState([])
-  // picks is an ordered array of golfer ids, index 0-4 = slots 1-5, index 5 = slot 6 (tiebreaker)
+  // picks is an ordered array of golfer ids; top 4 scorers count, 5th and 6th are tiebreakers
   const [picks, setPicks] = useState([])
   const [locked, setLocked] = useState(false)
   const [deadline, setDeadline] = useState(null)
@@ -167,7 +167,7 @@ export default function PicksPage() {
           <ul className="list-disc list-inside space-y-1 text-gray-600">
             <li>Pick <strong>6 golfers</strong> from any tier — no tier restrictions.</li>
             <li>Combined tier values must add up to <strong>at least 21</strong>.</li>
-            <li>No duplicate golfers. Your <strong>lowest scorer</strong> at any time is automatically the tiebreaker.</li>
+            <li>No duplicate golfers. Your <strong>5th and 6th lowest scorers</strong> are automatically tiebreakers.</li>
           </ul>
         </div>
 

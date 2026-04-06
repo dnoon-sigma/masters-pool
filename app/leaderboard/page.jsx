@@ -139,7 +139,7 @@ function ContestantsTab({ teams, golferMap, scorecardByName }) {
             {isOpen && (
               <div className="p-3 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
                 {team.golferDetails.map(({ golfer, score }, i) => {
-                  const isTiebreaker = i === 5
+                  const isTiebreaker = i >= 4
                   return (
                     <div key={golfer?.id ?? i}
                       className={`rounded-lg p-2 text-center text-xs border ${isTiebreaker ? 'border-dashed border-gray-300 bg-gray-50 opacity-60' : 'border-gray-200 bg-white'}`}
@@ -305,8 +305,8 @@ export default function LeaderboardPage() {
         return { golfer: g, score: g?.score ?? 0 }
       })
       golferDetails.sort((a, b) => b.score - a.score)
-      const total = golferDetails.slice(0, 5).reduce((sum, { score }) => sum + score, 0)
-      const tiebreakerScore = golferDetails[5]?.score ?? 0
+      const total = golferDetails.slice(0, 4).reduce((sum, { score }) => sum + score, 0)
+      const tiebreakerScore = golferDetails[4]?.score ?? 0
       return { ...team, total, golferDetails, tiebreakerScore }
     })
 
@@ -383,7 +383,7 @@ export default function LeaderboardPage() {
                 <span><strong className="text-red-500">−3</strong> Double+</span>
               </div>
               <p className="text-xs text-gray-400 mt-2">
-                Team score = best 5 of 6 golfers. Lowest scorer is the tiebreaker (TB). Top 5 expanded by default.
+                Team score = best 4 of 6 golfers. Your 5th and 6th lowest scorers are tiebreakers (TB).
               </p>
             </div>
           </>
