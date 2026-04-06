@@ -62,9 +62,11 @@ function Countdown({ deadline }) {
 
 export default function HomePage() {
   const [deadline, setDeadline] = useState(null)
+  const [user, setUser] = useState(null)
   const supabase = createClient()
 
   useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => setUser(user))
     supabase
       .from('settings')
       .select('picks_deadline')
@@ -102,7 +104,7 @@ export default function HomePage() {
 
         <div className="flex gap-4 flex-wrap justify-center">
           <Link
-            href="/auth"
+            href={user ? '/picks' : '/auth'}
             className="px-8 py-3 rounded-lg font-bold text-lg shadow-lg transition-transform hover:scale-105"
             style={{ backgroundColor: '#FFD700', color: '#006747' }}
           >
