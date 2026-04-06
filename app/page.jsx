@@ -60,21 +60,14 @@ function Countdown({ deadline }) {
   )
 }
 
+const PICKS_DEADLINE = new Date('2026-04-09T11:30:00Z') // Thursday April 9, 11:30 AM GMT
+
 export default function HomePage() {
-  const [deadline, setDeadline] = useState(null)
   const [user, setUser] = useState(null)
   const supabase = createClient()
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => setUser(user))
-    supabase
-      .from('settings')
-      .select('picks_deadline')
-      .limit(1)
-      .single()
-      .then(({ data }) => {
-        if (data?.picks_deadline) setDeadline(new Date(data.picks_deadline))
-      })
   }, [])
 
   return (
@@ -99,7 +92,7 @@ export default function HomePage() {
 
         <div className="mb-10">
           <p className="text-white/70 text-sm mb-4 uppercase tracking-widest">Picks lock in</p>
-          <Countdown deadline={deadline} />
+          <Countdown deadline={PICKS_DEADLINE} />
         </div>
 
         <div className="flex gap-4 flex-wrap justify-center">

@@ -41,25 +41,22 @@ export default function PicksPage() {
       const [{ data: golferData }, { data: picksData }, { data: settingsData }] = await Promise.all([
         supabase.from('golfers').select('*').order('tier').order('name'),
         supabase.from('picks').select('slot, golfer_id').eq('user_id', user.id),
-        supabase.from('settings').select('picks_deadline, tournament_active').limit(1).single(),
+        supabase.from('settings').select('tournament_active').limit(1).single(),
       ])
 
       setGolfers(golferData || [])
 
       if (picksData?.length) {
         setExistingPicks(picksData)
-        // Rebuild ordered picks array from saved slots
         const ordered = Array(6).fill(null)
         picksData.forEach(({ slot, golfer_id }) => { ordered[slot - 1] = golfer_id })
         setPicks(ordered.filter(Boolean))
       }
 
-      if (settingsData) {
-        const dl = settingsData.picks_deadline ? new Date(settingsData.picks_deadline) : null
-        setDeadline(dl)
-        if (dl && new Date() > dl) setLocked(true)
-        if (settingsData.tournament_active) setLocked(true)
-      }
+      const deadline = new Date('2026-04-09T11:30:00Z')
+      setDeadline(deadline)
+      if (new Date() > deadline) setLocked(true)
+      if (settingsData?.tournament_active) setLocked(true)
 
       setLoading(false)
     }

@@ -11,7 +11,6 @@ export default function AdminPage() {
   const [loading, setLoading] = useState(true)
 
   // Settings state
-  const [deadline, setDeadline] = useState('')
   const [tournamentActive, setTournamentActive] = useState(false)
   const [settingsId, setSettingsId] = useState(null)
   const [savingSettings, setSavingSettings] = useState(false)
@@ -61,14 +60,6 @@ export default function AdminPage() {
     if (data) {
       setSettingsId(data.id)
       setTournamentActive(data.tournament_active ?? false)
-      if (data.picks_deadline) {
-        // Format for datetime-local input
-        const d = new Date(data.picks_deadline)
-        const local = new Date(d.getTime() - d.getTimezoneOffset() * 60000)
-          .toISOString()
-          .slice(0, 16)
-        setDeadline(local)
-      }
     }
   }
 
@@ -104,7 +95,6 @@ export default function AdminPage() {
     setSettingsMsg('')
     try {
       const payload = {
-        picks_deadline: deadline ? new Date(deadline).toISOString() : null,
         tournament_active: tournamentActive,
       }
       if (settingsId) {
@@ -200,27 +190,16 @@ export default function AdminPage() {
         {/* Settings */}
         <section className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
           <h2 className="font-bold text-lg mb-4" style={{ color: '#006747' }}>Tournament Settings</h2>
-          <div className="grid sm:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Picks Deadline</label>
+          <div className="flex items-center">
+            <label className="flex items-center gap-2 cursor-pointer">
               <input
-                type="datetime-local"
-                value={deadline}
-                onChange={e => setDeadline(e.target.value)}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
-              />
-            </div>
-            <div className="flex items-end">
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={tournamentActive}
-                  onChange={e => setTournamentActive(e.target.checked)}
-                  className="w-4 h-4 accent-green-700"
+                type="checkbox"
+                checked={tournamentActive}
+                onChange={e => setTournamentActive(e.target.checked)}
+                className="w-4 h-4 accent-green-700"
                 />
                 <span className="text-sm font-medium text-gray-700">Tournament Active (locks picks)</span>
               </label>
-            </div>
           </div>
           <div className="mt-4 flex items-center gap-3">
             <button
