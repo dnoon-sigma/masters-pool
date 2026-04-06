@@ -191,8 +191,12 @@ function GolfersTab({ golfers, scorecardByName }) {
     const bCut = b.golfer.is_cut || b.card?.isCut
     if (aCut && !bCut) return 1
     if (!aCut && bCut) return -1
-    const aScore = a.card?.scoreToPar ?? 0
-    const bScore = b.card?.scoreToPar ?? 0
+    const aScore = a.card?.scoreToPar
+    const bScore = b.card?.scoreToPar
+    // Push no-data golfers below those with scores
+    if (aScore === null && bScore === null) return 0
+    if (aScore === null) return 1
+    if (bScore === null) return -1
     return aScore - bScore
   })
 

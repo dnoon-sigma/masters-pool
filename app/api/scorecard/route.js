@@ -65,8 +65,10 @@ export async function GET() {
       })
 
       const totalPoints = rounds.reduce((sum, r) => sum + r.roundPoints, 0)
-      const scoreToPar = rounds.reduce((sum, r) => sum + r.roundScoreToPar, 0)
       const holesPlayed = rounds.reduce((sum, r) => sum + r.holes.length, 0)
+      const scoreToPar = holesPlayed > 0
+        ? rounds.reduce((sum, r) => sum + r.roundScoreToPar, 0)
+        : null
 
       return { espnId, name, isCut, position, rounds, totalPoints, scoreToPar, holesPlayed }
     })
