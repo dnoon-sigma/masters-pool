@@ -31,6 +31,10 @@ export default function AdminPage() {
   const [syncing, setSyncing] = useState(false)
   const [syncMsg, setSyncMsg] = useState('')
 
+  // ESPN match check
+  const [matchResults, setMatchResults] = useState(null)
+  const [checkingMatches, setCheckingMatches] = useState(false)
+
   const router = useRouter()
   const supabase = createClient()
 
@@ -153,6 +157,55 @@ export default function AdminPage() {
     await loadGolfers()
   }
 
+  const checkEspnMatches = async () => {
+    setCheckingMatches(true)
+    setMatchResults(null)
+    try {
+      const [scorecardRes, { data: dbGolfers }] = await Promise.all([
+        fetch('/api/scorecard'),
+        supabase.from('golfers').select('id, name, espn_id, tier'),
+      ])
+      const { players: espnPlayers } = await scorecardRes.json()
+      const espnNames = (espnPlayers ?? []).map(p => p.name)
+
+      const results = (dbGolfers ?? []).map(golfer => {
+        // Try espn_id match first
+        const byId = golfer.espn_id
+          ? espnPlayers.find(p => p.espnId === golfer.espn_id)
+          : null
+
+        // Try exact name match (case-insensitive)
+        const byName = espnPlayers.find(
+          p => p.name.toLowerCase() === golfer.name.toLowerCase()
+        )
+
+        // Suggest close names if no match (shared words or similar length)
+        const suggestions = byId || byName ? [] : espnNames.filter(n => {
+          const gl = golfer.name.toLowerCase()
+          const nl = n.toLowerCase()
+          const glParts = gl.split(' ')
+          const nlParts = nl.split(' ')
+          return glParts.some(part => part.length > 2 && nlParts.some(np => np.includes(part) || part.includes(np)))
+        }).slice(0, 3)
+
+        return {
+          golfer,
+          matched: !!(byId || byName),
+          matchedBy: byId ? 'espn_id' : byName ? 'name' : null,
+          espnName: byId?.name ?? byName?.name ?? null,
+          suggestions,
+        }
+      })
+
+      results.sort((a, b) => a.matched - b.matched) // unmatched first
+      setMatchResults(results)
+    } catch (err) {
+      setMatchResults({ error: err.message })
+    } finally {
+      setCheckingMatches(false)
+    }
+  }
+
   const triggerSync = async () => {
     setSyncing(true)
     setSyncMsg('')
@@ -212,6 +265,83 @@ export default function AdminPage() {
             </button>
             {settingsMsg && <span className="text-sm text-gray-600">{settingsMsg}</span>}
           </div>
+        </section>
+
+        {/* ESPN Match Check */}
+        <section className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+          <h2 className="font-bold text-lg mb-2" style={{ color: '#006747' }}>ESPN Name Matching</h2>
+          <p className="text-sm text-gray-600 mb-4">
+            Checks every golfer in your database against the ESPN API to verify they will be matched correctly when scores sync.
+          </p>
+          <button
+            onClick={checkEspnMatches}
+            disabled={checkingMatches}
+            className="px-6 py-2 rounded-lg text-sm font-bold disabled:opacity-50 mb-4"
+            style={{ backgroundColor: '#006747', color: '#FFD700' }}
+          >
+            {checkingMatches ? 'Checking...' : 'Check ESPN Matches'}
+          </button>
+
+          {matchResults && !matchResults.error && (() => {
+            const unmatched = matchResults.filter(r => !r.matched)
+            const matched = matchResults.filter(r => r.matched)
+            return (
+              <div>
+                {/* Summary */}
+                <div className="flex gap-4 mb-4 text-sm">
+                  <span className="text-green-700 font-semibold">✓ {matched.length} matched</span>
+                  {unmatched.length > 0
+                    ? <span className="text-red-600 font-semibold">✗ {unmatched.length} unmatched</span>
+                    : <span className="text-green-700 font-semibold">✓ All golfers matched!</span>
+                  }
+                </div>
+
+                {/* Unmatched */}
+                {unmatched.length > 0 && (
+                  <div className="mb-4">
+                    <p className="text-xs font-bold uppercase tracking-widest text-red-500 mb-2">Unmatched — fix names below</p>
+                    <div className="space-y-2">
+                      {unmatched.map(({ golfer, suggestions }) => (
+                        <div key={golfer.id} className="flex flex-col sm:flex-row sm:items-center gap-2 bg-red-50 border border-red-200 rounded-lg px-3 py-2 text-sm">
+                          <span className="font-semibold text-red-700 flex-1">{golfer.name}</span>
+                          {suggestions.length > 0 && (
+                            <span className="text-gray-500 text-xs">
+                              Did you mean: {suggestions.join(', ')}?
+                            </span>
+                          )}
+                          {suggestions.length === 0 && (
+                            <span className="text-gray-400 text-xs">No close ESPN names found</span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                    <p className="text-xs text-gray-400 mt-2">Edit the golfer names in the Golfer Management section below to match ESPN exactly.</p>
+                  </div>
+                )}
+
+                {/* Matched */}
+                <details className="text-sm">
+                  <summary className="cursor-pointer text-gray-500 text-xs font-semibold uppercase tracking-widest mb-2">
+                    Show matched ({matched.length})
+                  </summary>
+                  <div className="space-y-1 mt-2">
+                    {matched.map(({ golfer, matchedBy, espnName }) => (
+                      <div key={golfer.id} className="flex items-center gap-2 text-xs text-gray-600">
+                        <span className="text-green-600">✓</span>
+                        <span className="font-medium">{golfer.name}</span>
+                        {espnName !== golfer.name && <span className="text-gray-400">→ "{espnName}" on ESPN</span>}
+                        <span className="text-gray-300">via {matchedBy}</span>
+                      </div>
+                    ))}
+                  </div>
+                </details>
+              </div>
+            )
+          })()}
+
+          {matchResults?.error && (
+            <p className="text-red-600 text-sm">Error: {matchResults.error}</p>
+          )}
         </section>
 
         {/* Score Sync */}
