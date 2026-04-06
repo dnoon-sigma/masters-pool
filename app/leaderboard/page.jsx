@@ -115,8 +115,9 @@ function ContestantsTab({ teams, golferMap, scorecardByName }) {
         return (
           <div key={team.user_id} className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
             {/* Header */}
-            <div
-              className="px-4 py-3 flex items-center justify-between"
+            <button
+              className="w-full text-left px-4 py-3 flex items-center justify-between cursor-pointer"
+              onClick={() => setExpanded(prev => ({ ...prev, [team.user_id]: !prev[team.user_id] }))}
               style={{ backgroundColor: rank === 1 ? '#006747' : '#f8f8f8', borderBottom: isOpen ? '1px solid #e5e7eb' : 'none' }}
             >
               <div className="flex items-center gap-3">
@@ -130,14 +131,9 @@ function ContestantsTab({ teams, golferMap, scorecardByName }) {
                   style={rank !== 1 ? { color: team.total > 0 ? '#006747' : team.total < 0 ? '#c0392b' : '#666' } : {}}>
                   {team.total > 0 ? `+${team.total}` : team.total === 0 ? 'E' : team.total} pts
                 </div>
-                <button
-                  onClick={() => setExpanded(prev => ({ ...prev, [team.user_id]: !prev[team.user_id] }))}
-                  className="text-gray-400 text-sm w-6 text-center"
-                >
-                  {isOpen ? '▲' : '▼'}
-                </button>
+                <span className="text-gray-400 text-sm w-6 text-center">{isOpen ? '▲' : '▼'}</span>
               </div>
-            </div>
+            </button>
 
             {/* Golfer grid */}
             {isOpen && (
