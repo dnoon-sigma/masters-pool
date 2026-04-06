@@ -53,6 +53,9 @@ export default function Navbar() {
               <Link href="/picks" className="hover:text-yellow-300 transition-colors">
                 My Picks
               </Link>
+              <Link href="/my-score" className="hover:text-yellow-300 transition-colors">
+                My Score
+              </Link>
               {isAdmin && (
                 <Link href="/admin" className="hover:text-yellow-300 transition-colors">
                   Admin
