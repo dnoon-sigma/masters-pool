@@ -128,7 +128,7 @@ export default function HomePage() {
               {
                 step: '2',
                 title: 'Watch & Score',
-                desc: 'Points are awarded per hole: Eagle +5, Birdie +2, Par 0, Bogey −1, Double or worse −3.',
+                desc: 'Tune in to free coverage of every golfer and every hole on the official Masters website.',
               },
               {
                 step: '3',
