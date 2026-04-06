@@ -4,7 +4,7 @@ import Link from 'next/link'
 import Navbar from '@/components/Navbar'
 import { useEffect, useState } from 'react'
 
-const PICKS_DEADLINE = new Date('2025-04-10T12:00:00-04:00') // Thursday April 10, noon ET
+const PICKS_DEADLINE = new Date('2026-04-10T12:00:00-04:00') // Thursday April 10, noon ET
 
 function Countdown() {
   const [timeLeft, setTimeLeft] = useState(null)
@@ -70,11 +70,11 @@ export default function HomePage() {
         style={{ background: 'linear-gradient(160deg, #004d35 0%, #006747 60%, #1a5c3a 100%)' }}
       >
         <p className="text-sm uppercase tracking-widest mb-3" style={{ color: '#FFD700' }}>
-          Augusta National • April 2025
+          Augusta National • April 2026
         </p>
         <h1 className="text-4xl md:text-6xl font-bold text-white mb-4 leading-tight">
           Masters Pool<br />
-          <span style={{ color: '#FFD700' }}>2025</span>
+          <span style={{ color: '#FFD700' }}>2026</span>
         </h1>
         <p className="text-white/80 text-lg max-w-xl mb-10">
           Pick 6 golfers across 6 tiers. Compete with your coworkers to see who has the best eye for the green jacket.
@@ -181,7 +181,7 @@ export default function HomePage() {
       </section>
 
       <footer style={{ backgroundColor: '#006747' }} className="text-white/60 text-center text-xs py-4">
-        Masters Pool 2025 — Augusta National Golf Club
+        Masters Pool 2026 — Augusta National Golf Club
       </footer>
     </div>
   )

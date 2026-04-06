@@ -42,7 +42,7 @@ export default function Navbar() {
     <nav style={{ backgroundColor: '#006747' }} className="text-white shadow-md">
       <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
         <Link href="/" className="text-xl font-bold tracking-wide" style={{ color: '#FFD700' }}>
-          ⛳ Masters Pool 2025
+          ⛳ Masters Pool 2026
         </Link>
         <div className="flex items-center gap-4 text-sm">
           <Link href="/leaderboard" className="hover:text-yellow-300 transition-colors">

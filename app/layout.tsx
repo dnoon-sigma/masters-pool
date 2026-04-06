@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Masters Pool 2025",
+  title: "Masters Pool 2026",
   description: "Pick your golfers and compete with coworkers in the Masters Pool",
 };
 
