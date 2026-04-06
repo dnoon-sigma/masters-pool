@@ -34,7 +34,15 @@ export async function GET() {
     }
 
     const data = await res.json()
-    const competitors = data?.events?.[0]?.competitions?.[0]?.competitors ?? []
+    const events = data?.events ?? []
+
+    const mastersEvent = events.find(e =>
+      e.name?.toLowerCase().includes('masters') ||
+      e.shortName?.toLowerCase().includes('masters')
+    ) ?? events[0]
+
+    const eventName = mastersEvent?.name ?? 'No event'
+    const competitors = mastersEvent?.competitions?.[0]?.competitors ?? []
 
     const players = competitors.map(competitor => {
       const espnId = competitor.id?.toString()
@@ -73,7 +81,7 @@ export async function GET() {
       return { espnId, name, isCut, position, rounds, totalPoints, scoreToPar, holesPlayed }
     })
 
-    return NextResponse.json({ players })
+    return NextResponse.json({ players, eventName })
   } catch (err) {
     return NextResponse.json({ error: err.message }, { status: 500 })
   }

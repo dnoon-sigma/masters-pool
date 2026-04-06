@@ -165,7 +165,7 @@ export default function AdminPage() {
         fetch('/api/scorecard'),
         supabase.from('golfers').select('id, name, espn_id, tier'),
       ])
-      const { players: espnPlayers } = await scorecardRes.json()
+      const { players: espnPlayers, eventName } = await scorecardRes.json()
       const espnNames = (espnPlayers ?? []).map(p => p.name)
 
       const results = (dbGolfers ?? []).map(golfer => {
@@ -198,7 +198,7 @@ export default function AdminPage() {
       })
 
       results.sort((a, b) => a.matched - b.matched) // unmatched first
-      setMatchResults(results)
+      setMatchResults({ results, eventName })
     } catch (err) {
       setMatchResults({ error: err.message })
     } finally {
@@ -283,10 +283,17 @@ export default function AdminPage() {
           </button>
 
           {matchResults && !matchResults.error && (() => {
-            const unmatched = matchResults.filter(r => !r.matched)
-            const matched = matchResults.filter(r => r.matched)
+            const { results, eventName } = matchResults
+            const unmatched = results.filter(r => !r.matched)
+            const matched = results.filter(r => r.matched)
             return (
               <div>
+                {/* Event label */}
+                <div className={`text-xs font-semibold px-3 py-1.5 rounded-lg inline-block mb-4 ${eventName?.toLowerCase().includes('masters') ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-800'}`}>
+                  ESPN is currently returning: <strong>{eventName}</strong>
+                  {!eventName?.toLowerCase().includes('masters') && ' — Masters field won\'t appear until April 9'}
+                </div>
+
                 {/* Summary */}
                 <div className="flex gap-4 mb-4 text-sm">
                   <span className="text-green-700 font-semibold">✓ {matched.length} matched</span>

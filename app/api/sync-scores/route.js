@@ -54,17 +54,23 @@ export async function POST(request) {
 
     const data = await res.json()
 
-    // ESPN structure: data.events[0].competitions[0].competitors[]
     const events = data?.events ?? []
     if (events.length === 0) {
       return NextResponse.json({ error: 'No events found in ESPN response' }, { status: 422 })
     }
 
-    const competition = events[0]?.competitions?.[0]
+    // Find the Masters specifically — fall back to first event if not found yet
+    const mastersEvent = events.find(e =>
+      e.name?.toLowerCase().includes('masters') ||
+      e.shortName?.toLowerCase().includes('masters')
+    ) ?? events[0]
+
+    const eventName = mastersEvent?.name ?? 'Unknown event'
+    const competition = mastersEvent?.competitions?.[0]
     const competitors = competition?.competitors ?? []
 
     if (competitors.length === 0) {
-      return NextResponse.json({ error: 'No competitors found' }, { status: 422 })
+      return NextResponse.json({ error: `No competitors found in "${eventName}"` }, { status: 422 })
     }
 
     // Fetch all golfers from DB so we can match by espn_id or name
