@@ -110,8 +110,7 @@ function ContestantsTab({ teams, golferMap, scorecardByName }) {
     <div className="space-y-3">
       {teams.map((team, index) => {
         const rank = index + 1
-        const autoExpand = rank <= 5
-        const isOpen = autoExpand || expanded[team.user_id]
+        const isOpen = expanded[team.user_id]
 
         return (
           <div key={team.user_id} className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
@@ -131,14 +130,12 @@ function ContestantsTab({ teams, golferMap, scorecardByName }) {
                   style={rank !== 1 ? { color: team.total > 0 ? '#006747' : team.total < 0 ? '#c0392b' : '#666' } : {}}>
                   {team.total > 0 ? `+${team.total}` : team.total === 0 ? 'E' : team.total} pts
                 </div>
-                {!autoExpand && (
-                  <button
-                    onClick={() => setExpanded(prev => ({ ...prev, [team.user_id]: !prev[team.user_id] }))}
-                    className="text-gray-400 text-sm w-6 text-center"
-                  >
-                    {isOpen ? '▲' : '▼'}
-                  </button>
-                )}
+                <button
+                  onClick={() => setExpanded(prev => ({ ...prev, [team.user_id]: !prev[team.user_id] }))}
+                  className="text-gray-400 text-sm w-6 text-center"
+                >
+                  {isOpen ? '▲' : '▼'}
+                </button>
               </div>
             </div>
 
