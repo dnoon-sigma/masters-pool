@@ -83,7 +83,7 @@ export default function HomePage() {
           Augusta National • April 2026
         </p>
         <h1 className="text-4xl md:text-6xl font-bold text-white mb-4 leading-tight">
-          Masters Pool<br />
+          Sigma Masters Pool<br />
           <span style={{ color: '#FFD700' }}>2026</span>
         </h1>
         <p className="text-white/80 text-lg max-w-xl mb-10">
@@ -191,7 +191,7 @@ export default function HomePage() {
       </section>
 
       <footer style={{ backgroundColor: '#006747' }} className="text-white/60 text-center text-xs py-4">
-        Masters Pool 2026 — Augusta National Golf Club
+        Sigma Masters Pool 2026 — Augusta National Golf Club
       </footer>
     </div>
   )

@@ -89,7 +89,7 @@ export default function AuthPage() {
           <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
             {/* Header */}
             <div className="px-8 py-6 text-center" style={{ backgroundColor: '#006747' }}>
-              <h1 className="text-2xl font-bold text-white">Masters Pool 2026</h1>
+              <h1 className="text-2xl font-bold text-white">Sigma Masters Pool 2026</h1>
               <p className="text-sm mt-1" style={{ color: '#FFD700' }}>
                 {mode === 'signin' ? 'Sign in to manage your picks' : 'Create your account'}
               </p>

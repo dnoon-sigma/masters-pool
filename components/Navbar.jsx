@@ -70,7 +70,7 @@ export default function Navbar() {
     <nav style={{ backgroundColor: '#006747' }} className="text-white shadow-md relative z-50">
       <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
         <Link href="/" className="text-xl font-bold tracking-wide" style={{ color: '#FFD700' }}>
-          ⛳ Masters Pool 2026
+          ⛳ Sigma Masters Pool 2026
         </Link>
 
         {/* Desktop nav */}
