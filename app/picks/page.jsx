@@ -9,19 +9,20 @@ const TIER_LABELS = {
   1: 'Tier 1 — Elite',
   2: 'Tier 2 — Contenders',
   3: 'Tier 3 — Dark Horses',
-  4: 'Tier 4 — Veterans',
+  4: 'Tier 4 — Solid Picks',
   5: 'Tier 5 — Longshots',
-  6: 'Tier 6 — Tiebreaker',
+  6: 'Tier 6 — Deep Cuts',
 }
 
-// Slot 6 is tiebreaker; valid submission requires tier sum >= 21
 const MIN_TIER_SUM = 21
+const MAX_PICKS = 6
 
 export default function PicksPage() {
   const [user, setUser] = useState(null)
   const [golfers, setGolfers] = useState([])
-  const [existingPicks, setExistingPicks] = useState([]) // [{slot, golfer_id}]
-  const [selections, setSelections] = useState({ 1: '', 2: '', 3: '', 4: '', 5: '', 6: '' })
+  const [existingPicks, setExistingPicks] = useState([])
+  // picks is an ordered array of golfer ids, index 0-4 = slots 1-5, index 5 = slot 6 (tiebreaker)
+  const [picks, setPicks] = useState([])
   const [locked, setLocked] = useState(false)
   const [deadline, setDeadline] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -47,9 +48,10 @@ export default function PicksPage() {
 
       if (picksData?.length) {
         setExistingPicks(picksData)
-        const sel = { 1: '', 2: '', 3: '', 4: '', 5: '', 6: '' }
-        picksData.forEach(({ slot, golfer_id }) => { sel[slot] = golfer_id })
-        setSelections(sel)
+        // Rebuild ordered picks array from saved slots
+        const ordered = Array(6).fill(null)
+        picksData.forEach(({ slot, golfer_id }) => { ordered[slot - 1] = golfer_id })
+        setPicks(ordered.filter(Boolean))
       }
 
       if (settingsData) {
@@ -64,29 +66,37 @@ export default function PicksPage() {
     load()
   }, [])
 
-  const tierSum = () => {
-    return [1, 2, 3, 4, 5].reduce((sum, slot) => {
-      const g = golfers.find(g => g.id === selections[slot])
-      return sum + (g ? g.tier : 0)
-    }, 0)
+  const tierSum = picks.reduce((sum, id) => {
+    const g = golfers.find(g => g.id === id)
+    return sum + (g ? g.tier : 0)
+  }, 0)
+
+  const handleToggle = (golferId) => {
+    if (locked) return
+    setError('')
+    setSuccess('')
+    if (picks.includes(golferId)) {
+      // Deselect
+      setPicks(prev => prev.filter(id => id !== golferId))
+    } else {
+      if (picks.length >= MAX_PICKS) {
+        setError('You already have 6 picks. Remove one before adding another.')
+        return
+      }
+      setPicks(prev => [...prev, golferId])
+    }
   }
 
-  const pickedGolferIds = Object.values(selections).filter(Boolean)
-
-  const handleSelect = (slot, golferId) => {
+  const removePick = (index) => {
     if (locked) return
-    setSelections(prev => ({ ...prev, [slot]: golferId }))
+    setPicks(prev => prev.filter((_, i) => i !== index))
     setError('')
+    setSuccess('')
   }
 
   const validate = () => {
-    for (let slot = 1; slot <= 6; slot++) {
-      if (!selections[slot]) return `Please select a golfer for slot ${slot} (${TIER_LABELS[slot].split('—')[0].trim()}).`
-    }
-    const ids = Object.values(selections)
-    if (new Set(ids).size !== ids.length) return 'You cannot pick the same golfer twice.'
-    const sum = tierSum()
-    if (sum < MIN_TIER_SUM) return `Your picks (slots 1-5) must have a tier sum of at least ${MIN_TIER_SUM}. Current sum: ${sum}.`
+    if (picks.length < MAX_PICKS) return `Select ${MAX_PICKS - picks.length} more golfer${MAX_PICKS - picks.length > 1 ? 's' : ''}.`
+    if (tierSum < MIN_TIER_SUM) return `Tier sum must be at least ${MIN_TIER_SUM}. Current sum: ${tierSum}. Add higher-tier golfers.`
     return null
   }
 
@@ -99,13 +109,12 @@ export default function PicksPage() {
     setSuccess('')
 
     try {
-      // Delete existing picks and re-insert
       await supabase.from('picks').delete().eq('user_id', user.id)
 
-      const rows = Object.entries(selections).map(([slot, golfer_id]) => ({
+      const rows = picks.map((golfer_id, i) => ({
         user_id: user.id,
         golfer_id,
-        slot: parseInt(slot),
+        slot: i + 1,
       }))
 
       const { error: insertError } = await supabase.from('picks').insert(rows)
@@ -120,16 +129,11 @@ export default function PicksPage() {
     }
   }
 
-  const sum = tierSum()
-  const allSelected = [1,2,3,4,5,6].every(s => selections[s])
-
   if (loading) {
     return (
       <div className="min-h-screen flex flex-col" style={{ backgroundColor: '#f9f6f0' }}>
         <Navbar />
-        <div className="flex-1 flex items-center justify-center">
-          <div className="text-gray-500">Loading golfers...</div>
-        </div>
+        <div className="flex-1 flex items-center justify-center text-gray-500">Loading golfers...</div>
       </div>
     )
   }
@@ -139,13 +143,15 @@ export default function PicksPage() {
     golfers: golfers.filter(g => g.tier === tier),
   }))
 
+  const isValid = picks.length === MAX_PICKS && tierSum >= MIN_TIER_SUM
+
   return (
     <div className="min-h-screen flex flex-col" style={{ backgroundColor: '#f9f6f0' }}>
       <Navbar />
 
       <main className="flex-1 max-w-4xl mx-auto w-full px-4 py-8">
         {/* Header */}
-        <div className="mb-6">
+        <div className="mb-4">
           <h1 className="text-3xl font-bold" style={{ color: '#006747' }}>My Picks</h1>
           {locked ? (
             <p className="text-red-600 mt-1 text-sm font-medium">
@@ -158,73 +164,112 @@ export default function PicksPage() {
           ) : null}
         </div>
 
-        {/* Rules reminder */}
-        <div className="bg-white border border-yellow-300 rounded-xl p-4 mb-6 text-sm text-gray-700">
+        {/* Rules */}
+        <div className="bg-white border border-yellow-300 rounded-xl p-4 mb-5 text-sm text-gray-700">
           <p className="font-semibold mb-1" style={{ color: '#006747' }}>Rules</p>
           <ul className="list-disc list-inside space-y-1 text-gray-600">
-            <li>Select one golfer per slot (tiers 1–6).</li>
-            <li>Slots 1–5 must have a combined tier sum of <strong>at least 21</strong>.</li>
-            <li>Slot 6 is your <strong>tiebreaker</strong> pick only.</li>
-            <li>No duplicate golfers allowed.</li>
+            <li>Pick <strong>6 golfers</strong> from any tier — no tier restrictions.</li>
+            <li>Combined tier values must add up to <strong>at least 21</strong>.</li>
+            <li>No duplicate golfers. Your <strong>lowest scorer</strong> at any time is automatically the tiebreaker.</li>
           </ul>
         </div>
 
-        {/* Tier sum tracker */}
-        <div className="flex items-center gap-3 mb-6">
-          <span className="text-sm text-gray-600">Tier sum (slots 1–5):</span>
-          <span
-            className="font-bold text-lg px-3 py-0.5 rounded-full"
-            style={{
-              backgroundColor: sum >= MIN_TIER_SUM ? '#006747' : '#e5e7eb',
-              color: sum >= MIN_TIER_SUM ? '#FFD700' : '#374151',
-            }}
-          >
-            {sum} / {MIN_TIER_SUM}
-          </span>
-          {sum >= MIN_TIER_SUM && <span className="text-green-600 text-sm">✓ Valid</span>}
+        {/* Your Team */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 mb-6">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="font-bold text-sm uppercase tracking-wide text-gray-500">Your Team</h2>
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-gray-500">Tier sum:</span>
+              <span
+                className="font-bold text-sm px-3 py-0.5 rounded-full"
+                style={{
+                  backgroundColor: tierSum >= MIN_TIER_SUM ? '#006747' : '#e5e7eb',
+                  color: tierSum >= MIN_TIER_SUM ? '#FFD700' : '#374151',
+                }}
+              >
+                {tierSum} / {MIN_TIER_SUM}
+              </span>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+            {Array.from({ length: MAX_PICKS }).map((_, i) => {
+              const golferId = picks[i]
+              const golfer = golfers.find(g => g.id === golferId)
+              const isTiebreaker = i === 5
+              return (
+                <div
+                  key={i}
+                  className={`rounded-lg border-2 px-3 py-2 flex items-center justify-between gap-2 min-h-[44px] ${
+                    golfer
+                      ? 'border-green-200 bg-green-50'
+                      : 'border-dashed border-gray-200 bg-gray-50'
+                  }`}
+                >
+                  <div className="flex items-center gap-2 overflow-hidden">
+                    <span
+                      className="shrink-0 w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold"
+                      style={{ backgroundColor: '#006747', color: '#FFD700' }}
+                    >
+                      {i + 1}
+                    </span>
+                    {golfer ? (
+                      <span className="text-sm font-medium text-gray-800 truncate">{golfer.name}</span>
+                    ) : (
+                      <span className="text-xs text-gray-400">Empty</span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-1 shrink-0">
+                    {golfer && (
+                      <span className="text-xs px-1.5 py-0.5 rounded bg-gray-200 text-gray-600">T{golfer.tier}</span>
+                    )}
+                    {golfer && !locked && (
+                      <button
+                        onClick={() => removePick(i)}
+                        className="text-gray-400 hover:text-red-500 text-xs ml-1 leading-none"
+                        title="Remove"
+                      >
+                        ✕
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
         </div>
 
-        {/* Tier groups */}
-        <div className="space-y-6">
+        {/* Golfer selection grouped by tier */}
+        <div className="space-y-4">
           {tierGroups.map(({ tier, golfers: tierGolfers }) => (
             <div key={tier} className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-              <div
-                className="px-4 py-3 flex items-center justify-between"
-                style={{ backgroundColor: tier === 6 ? '#4a4a4a' : '#006747' }}
-              >
-                <span className="text-white font-semibold text-sm">
-                  {TIER_LABELS[tier]}
-                </span>
-                <span className="text-xs rounded-full px-2 py-0.5 bg-white/20 text-white">
-                  Slot {tier}
-                </span>
+              <div className="px-4 py-2.5 flex items-center justify-between" style={{ backgroundColor: '#006747' }}>
+                <span className="text-white font-semibold text-sm">{TIER_LABELS[tier]}</span>
+                <span className="text-xs text-white/70">Tier value: {tier}</span>
               </div>
-
-              <div className="p-4 grid grid-cols-2 sm:grid-cols-3 gap-2">
+              <div className="p-3 grid grid-cols-2 sm:grid-cols-3 gap-2">
                 {tierGolfers.length === 0 && (
                   <p className="col-span-3 text-gray-400 text-sm text-center py-2">No golfers in this tier yet.</p>
                 )}
                 {tierGolfers.map(golfer => {
-                  const isSelected = selections[tier] === golfer.id
-                  const isPickedElsewhere = !isSelected && pickedGolferIds.includes(golfer.id)
+                  const isSelected = picks.includes(golfer.id)
+                  const isFull = !isSelected && picks.length >= MAX_PICKS
                   return (
                     <button
                       key={golfer.id}
-                      onClick={() => handleSelect(tier, golfer.id)}
-                      disabled={locked || isPickedElsewhere}
+                      onClick={() => handleToggle(golfer.id)}
+                      disabled={locked || isFull}
                       className={`text-left px-3 py-2 rounded-lg text-sm border transition-all ${
                         isSelected
-                          ? 'border-2 text-white font-semibold'
-                          : isPickedElsewhere
+                          ? 'border-2 font-semibold text-white'
+                          : isFull
                           ? 'border-gray-200 text-gray-300 bg-gray-50 cursor-not-allowed'
                           : 'border-gray-200 hover:border-green-500 bg-white'
-                      } ${locked ? 'cursor-not-allowed' : ''}`}
+                      }`}
                       style={isSelected ? { backgroundColor: '#006747', borderColor: '#FFD700' } : {}}
                     >
-                      <span>{golfer.name}</span>
-                      {golfer.is_cut && (
-                        <span className="ml-2 text-xs text-red-400">CUT</span>
-                      )}
+                      {golfer.name}
+                      {golfer.is_cut && <span className="ml-1 text-xs text-red-400">CUT</span>}
                     </button>
                   )
                 })}
@@ -233,56 +278,52 @@ export default function PicksPage() {
           ))}
         </div>
 
-        {/* Save section */}
+        {/* Submit bar */}
         {!locked && (
           <div className="mt-8 sticky bottom-4">
             <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-4 flex flex-col sm:flex-row items-center gap-4">
               <div className="flex-1 text-sm text-gray-600">
-                {allSelected
-                  ? sum >= MIN_TIER_SUM
-                    ? '✅ All picks valid — ready to submit!'
-                    : `⚠️ Tier sum too low (${sum}/${MIN_TIER_SUM})`
-                  : `Select golfers for all 6 slots.`}
+                {picks.length < MAX_PICKS
+                  ? `Select ${MAX_PICKS - picks.length} more golfer${MAX_PICKS - picks.length > 1 ? 's' : ''}.`
+                  : isValid
+                  ? '✅ Ready to submit!'
+                  : `⚠️ Tier sum too low (${tierSum}/${MIN_TIER_SUM}) — swap in higher-tier picks.`}
               </div>
               <button
                 onClick={handleSave}
-                disabled={saving || !allSelected}
+                disabled={saving || !isValid}
                 className="w-full sm:w-auto px-8 py-3 rounded-lg font-bold text-sm transition-opacity disabled:opacity-50"
                 style={{ backgroundColor: '#006747', color: '#FFD700' }}
               >
                 {saving ? 'Saving...' : existingPicks.length ? 'Update Picks' : 'Submit Picks'}
               </button>
             </div>
-
             {error && (
-              <p className="mt-3 text-red-600 text-sm bg-red-50 border border-red-200 rounded-lg px-4 py-2">
-                {error}
-              </p>
+              <p className="mt-3 text-red-600 text-sm bg-red-50 border border-red-200 rounded-lg px-4 py-2">{error}</p>
             )}
             {success && (
-              <p className="mt-3 text-green-700 text-sm bg-green-50 border border-green-200 rounded-lg px-4 py-2">
-                {success}
-              </p>
+              <p className="mt-3 text-green-700 text-sm bg-green-50 border border-green-200 rounded-lg px-4 py-2">{success}</p>
             )}
           </div>
         )}
 
-        {locked && existingPicks.length > 0 && (
+        {/* Locked view */}
+        {locked && picks.length > 0 && (
           <div className="mt-8 bg-white rounded-xl border border-gray-100 shadow-sm p-5">
             <h2 className="font-bold text-lg mb-3" style={{ color: '#006747' }}>Your Submitted Picks</h2>
             <ul className="space-y-2">
-              {[1,2,3,4,5,6].map(slot => {
-                const golfer = golfers.find(g => g.id === selections[slot])
+              {picks.map((golferId, i) => {
+                const golfer = golfers.find(g => g.id === golferId)
                 return (
-                  <li key={slot} className="flex items-center gap-3 text-sm">
+                  <li key={i} className="flex items-center gap-3 text-sm">
                     <span
                       className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0"
                       style={{ backgroundColor: '#006747', color: '#FFD700' }}
                     >
-                      {slot}
+                      {i + 1}
                     </span>
                     <span>{golfer?.name || '—'}</span>
-                    {slot === 6 && <span className="text-gray-400 text-xs">(tiebreaker)</span>}
+                    <span className="text-gray-400 text-xs">T{golfer?.tier}</span>
                   </li>
                 )
               })}

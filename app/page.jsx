@@ -138,7 +138,7 @@ export default function HomePage() {
               {
                 step: '3',
                 title: 'Win the Pool',
-                desc: 'Your total is the sum of your 5 best golfers. Slot 6 is your tiebreaker pick.',
+                desc: 'Your score is the sum of your best 5 of 6 golfers. Your lowest scorer at any time is automatically the tiebreaker.',
               },
             ].map(({ step, title, desc }) => (
               <div key={step} className="text-center">

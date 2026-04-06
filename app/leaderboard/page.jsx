@@ -25,7 +25,6 @@ function PositionBadge({ pos }) {
 
 export default function LeaderboardPage() {
   const [teams, setTeams] = useState([])
-  const [golferMap, setGolferMap] = useState({})
   const [lastSync, setLastSync] = useState(null)
   const [loading, setLoading] = useState(true)
   const [countdown, setCountdown] = useState(REFRESH_INTERVAL / 1000)
@@ -39,39 +38,44 @@ export default function LeaderboardPage() {
       supabase.from('settings').select('last_score_sync').limit(1).single(),
     ])
 
-    // Build golfer lookup
     const gMap = {}
     ;(golfers || []).forEach(g => { gMap[g.id] = g })
-    setGolferMap(gMap)
 
     if (settings?.last_score_sync) setLastSync(new Date(settings.last_score_sync))
 
-    // Build team structures
     const profileMap = {}
     ;(profiles || []).forEach(p => { profileMap[p.user_id] = p.username })
 
+    // Group picks by user
     const teamMap = {}
-    ;(picks || []).forEach(({ user_id, golfer_id, slot }) => {
-      if (!teamMap[user_id]) teamMap[user_id] = { user_id, username: profileMap[user_id] || 'Unknown', slots: {} }
-      teamMap[user_id].slots[slot] = golfer_id
+    ;(picks || []).forEach(({ user_id, golfer_id }) => {
+      if (!teamMap[user_id]) teamMap[user_id] = { user_id, username: profileMap[user_id] || 'Unknown', golferIds: [] }
+      teamMap[user_id].golferIds.push(golfer_id)
     })
 
-    // Score each team: sum slots 1-5 (slot 6 is tiebreaker only)
     const scored = Object.values(teamMap).map(team => {
-      let total = 0
-      const pickedGolfers = []
-      for (let slot = 1; slot <= 6; slot++) {
-        const golferId = team.slots[slot]
-        const golfer = gMap[golferId]
-        const score = golfer?.score ?? 0
-        pickedGolfers.push({ slot, golfer, score })
-        if (slot <= 5) total += score
+      const golferDetails = team.golferIds.map(id => {
+        const g = gMap[id]
+        return { golfer: g, score: g?.score ?? 0 }
+      })
+
+      // Sort by score descending — best performers first, worst last
+      golferDetails.sort((a, b) => b.score - a.score)
+
+      // Top 5 count toward team total; worst performer is the tiebreaker
+      const top5 = golferDetails.slice(0, 5)
+      const tiebreaker = golferDetails[5] ?? null
+      const total = top5.reduce((sum, { score }) => sum + score, 0)
+
+      return {
+        ...team,
+        total,
+        golferDetails, // sorted best to worst
+        tiebreakerScore: tiebreaker?.score ?? 0,
       }
-      const tiebreakerScore = gMap[team.slots[6]]?.score ?? 0
-      return { ...team, total, pickedGolfers, tiebreakerScore }
     })
 
-    // Sort: highest total first, then tiebreaker descending
+    // Sort: highest total first, then highest tiebreaker score
     scored.sort((a, b) => {
       if (b.total !== a.total) return b.total - a.total
       return b.tiebreakerScore - a.tiebreakerScore
@@ -84,12 +88,10 @@ export default function LeaderboardPage() {
 
   useEffect(() => {
     loadData()
-
     const refreshTimer = setInterval(loadData, REFRESH_INTERVAL)
     const countdownTimer = setInterval(() => {
       setCountdown(prev => (prev <= 1 ? REFRESH_INTERVAL / 1000 : prev - 1))
     }, 1000)
-
     return () => {
       clearInterval(refreshTimer)
       clearInterval(countdownTimer)
@@ -104,7 +106,6 @@ export default function LeaderboardPage() {
       <Navbar />
 
       <main className="flex-1 max-w-5xl mx-auto w-full px-4 py-8">
-        {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-2">
           <div>
             <h1 className="text-3xl font-bold" style={{ color: '#006747' }}>Leaderboard</h1>
@@ -131,10 +132,7 @@ export default function LeaderboardPage() {
             {teams.map((team, index) => {
               const rank = index + 1
               return (
-                <div
-                  key={team.user_id}
-                  className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden"
-                >
+                <div key={team.user_id} className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
                   {/* Team header */}
                   <div
                     className="px-4 py-3 flex items-center justify-between"
@@ -142,54 +140,50 @@ export default function LeaderboardPage() {
                   >
                     <div className="flex items-center gap-3">
                       <PositionBadge pos={rank} />
-                      <span
-                        className={`font-bold text-base ${rank === 1 ? 'text-white' : 'text-gray-800'}`}
-                      >
+                      <span className={`font-bold text-base ${rank === 1 ? 'text-white' : 'text-gray-800'}`}>
                         {team.username}
                       </span>
                     </div>
-                    <div className="text-right">
-                      <div
-                        className={`text-xl font-bold ${rank === 1 ? 'text-yellow-300' : ''}`}
-                        style={rank !== 1 ? { color: team.total > 0 ? '#006747' : team.total < 0 ? '#c0392b' : '#666' } : {}}
-                      >
-                        {team.total > 0 ? `+${team.total}` : team.total === 0 ? 'E' : team.total} pts
-                      </div>
+                    <div
+                      className={`text-xl font-bold ${rank === 1 ? 'text-yellow-300' : ''}`}
+                      style={rank !== 1 ? { color: team.total > 0 ? '#006747' : team.total < 0 ? '#c0392b' : '#666' } : {}}
+                    >
+                      {team.total > 0 ? `+${team.total}` : team.total === 0 ? 'E' : team.total} pts
                     </div>
                   </div>
 
-                  {/* Golfer picks grid */}
+                  {/* Golfer grid — sorted best to worst, last one is tiebreaker */}
                   <div className="p-3 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
-                    {team.pickedGolfers.map(({ slot, golfer, score }) => (
-                      <div
-                        key={slot}
-                        className={`rounded-lg p-2 text-center text-xs border ${
-                          slot === 6 ? 'border-dashed border-gray-300 bg-gray-50' : 'border-gray-200 bg-white'
-                        }`}
-                      >
-                        <div className="text-gray-400 mb-1">
-                          {slot === 6 ? 'TB' : `S${slot}`}
-                        </div>
-                        <div className="font-semibold text-gray-800 leading-tight min-h-[2rem] flex items-center justify-center">
-                          {golfer?.name ?? <span className="text-gray-300">—</span>}
-                        </div>
-                        {golfer?.is_cut ? (
-                          <div className="text-red-400 font-semibold mt-1">CUT</div>
-                        ) : (
-                          <div className="mt-1">
-                            <ScoreBadge score={slot <= 5 ? score : null} />
-                            {slot === 6 && golfer && (
-                              <span className="text-gray-400">
-                                <ScoreBadge score={score} />
-                              </span>
-                            )}
+                    {team.golferDetails.map(({ golfer, score }, i) => {
+                      const isTiebreaker = i === 5
+                      return (
+                        <div
+                          key={golfer?.id ?? i}
+                          className={`rounded-lg p-2 text-center text-xs border ${
+                            isTiebreaker
+                              ? 'border-dashed border-gray-300 bg-gray-50 opacity-60'
+                              : 'border-gray-200 bg-white'
+                          }`}
+                        >
+                          {isTiebreaker && (
+                            <div className="text-gray-400 mb-1 uppercase tracking-widest text-[10px]">TB</div>
+                          )}
+                          <div className="font-semibold text-gray-800 leading-tight min-h-[2rem] flex items-center justify-center text-center">
+                            {golfer?.name ?? <span className="text-gray-300">—</span>}
                           </div>
-                        )}
-                        {golfer?.position && !golfer.is_cut && (
-                          <div className="text-gray-400 text-xs mt-0.5">T{golfer.position}</div>
-                        )}
-                      </div>
-                    ))}
+                          {golfer?.is_cut ? (
+                            <div className="text-red-400 font-semibold mt-1">CUT</div>
+                          ) : (
+                            <div className="mt-1">
+                              <ScoreBadge score={score} />
+                            </div>
+                          )}
+                          {golfer?.position && !golfer.is_cut && (
+                            <div className="text-gray-400 text-xs mt-0.5">T{golfer.position}</div>
+                          )}
+                        </div>
+                      )
+                    })}
                   </div>
                 </div>
               )
@@ -197,7 +191,6 @@ export default function LeaderboardPage() {
           </div>
         )}
 
-        {/* Scoring legend */}
         <div className="mt-8 bg-white rounded-xl border border-gray-100 shadow-sm p-4">
           <p className="text-xs text-gray-500 font-semibold uppercase tracking-widest mb-2">Scoring</p>
           <div className="flex flex-wrap gap-3 text-xs text-gray-600">
@@ -209,7 +202,7 @@ export default function LeaderboardPage() {
             <span><strong className="text-red-500">−3</strong> Double+</span>
           </div>
           <p className="text-xs text-gray-400 mt-2">
-            Scores reflect slots 1–5. Slot 6 (TB) is tiebreaker only.
+            Team score = your best 5 of 6 golfers. Your lowest scorer is automatically the tiebreaker (TB).
           </p>
         </div>
       </main>
