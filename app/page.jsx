@@ -87,7 +87,7 @@ export default function HomePage() {
           <span style={{ color: '#FFD700' }}>2026</span>
         </h1>
         <p className="text-white/80 text-lg max-w-xl mb-10">
-          Pick 6 golfers across 6 tiers. Compete with your coworkers to see who has the best eye for the green jacket.
+          Choose your fighters in this year's Masters and compete against your fellow Sigmanauts!
         </p>
 
         <div className="mb-10">
