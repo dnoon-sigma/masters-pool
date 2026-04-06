@@ -3,17 +3,18 @@
 import Link from 'next/link'
 import Navbar from '@/components/Navbar'
 import { useEffect, useState } from 'react'
+import { createClient } from '@/lib/supabase/client'
 
-const PICKS_DEADLINE = new Date('2026-04-10T12:00:00-04:00') // Thursday April 10, noon ET
-
-function Countdown() {
+function Countdown({ deadline }) {
   const [timeLeft, setTimeLeft] = useState(null)
   const [locked, setLocked] = useState(false)
 
   useEffect(() => {
+    if (!deadline) return
+
     function update() {
       const now = new Date()
-      const diff = PICKS_DEADLINE - now
+      const diff = deadline - now
       if (diff <= 0) {
         setLocked(true)
         setTimeLeft(null)
@@ -28,11 +29,11 @@ function Countdown() {
     update()
     const id = setInterval(update, 1000)
     return () => clearInterval(id)
-  }, [])
+  }, [deadline])
 
   if (locked) {
     return (
-      <p className="text-red-600 font-semibold text-lg">Picks are locked — the tournament has begun!</p>
+      <p className="text-white font-semibold text-lg">Picks are locked — the tournament has begun!</p>
     )
   }
 
@@ -60,6 +61,20 @@ function Countdown() {
 }
 
 export default function HomePage() {
+  const [deadline, setDeadline] = useState(null)
+  const supabase = createClient()
+
+  useEffect(() => {
+    supabase
+      .from('settings')
+      .select('picks_deadline')
+      .limit(1)
+      .single()
+      .then(({ data }) => {
+        if (data?.picks_deadline) setDeadline(new Date(data.picks_deadline))
+      })
+  }, [])
+
   return (
     <div className="min-h-screen flex flex-col">
       <Navbar />
@@ -82,7 +97,7 @@ export default function HomePage() {
 
         <div className="mb-10">
           <p className="text-white/70 text-sm mb-4 uppercase tracking-widest">Picks lock in</p>
-          <Countdown />
+          <Countdown deadline={deadline} />
         </div>
 
         <div className="flex gap-4 flex-wrap justify-center">
