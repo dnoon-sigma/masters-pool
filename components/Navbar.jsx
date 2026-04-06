@@ -58,6 +58,7 @@ export default function Navbar() {
     { href: '/leaderboard', label: 'Leaderboard', always: true },
     { href: '/picks', label: 'My Picks', auth: true },
     { href: '/my-score', label: 'My Score', auth: true },
+    { href: '/account', label: 'Account', auth: true },
     { href: '/admin', label: 'Admin', admin: true },
   ].filter(link => {
     if (link.admin) return isAdmin

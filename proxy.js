@@ -30,7 +30,7 @@ export async function proxy(request) {
   const { pathname } = request.nextUrl
 
   // Protect /picks and /admin
-  if (!user && (pathname.startsWith('/picks') || pathname.startsWith('/admin') || pathname.startsWith('/my-score'))) {
+  if (!user && (pathname.startsWith('/picks') || pathname.startsWith('/admin') || pathname.startsWith('/my-score') || pathname.startsWith('/account'))) {
     return NextResponse.redirect(new URL('/auth', request.url))
   }
 
