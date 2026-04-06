@@ -74,18 +74,25 @@ export default function Navbar() {
         </Link>
 
         {/* Desktop nav */}
-        <div className="hidden sm:flex items-center gap-4 text-sm">
+        <div className="hidden sm:flex items-center gap-2 text-sm">
           {navLinks.map(({ href, label }) => (
-            <Link key={href} href={href} className="hover:text-yellow-300 transition-colors">
+            <Link
+              key={href}
+              href={href}
+              className="px-3 py-1.5 rounded-lg font-medium border border-white/30 hover:border-white/70 hover:bg-white/10 transition-all"
+            >
               {label}
             </Link>
           ))}
           {user ? (
-            <button onClick={handleSignOut} className="hover:text-yellow-300 transition-colors">
+            <button
+              onClick={handleSignOut}
+              className="px-3 py-1.5 rounded-lg font-medium border border-white/30 hover:border-white/70 hover:bg-white/10 transition-all"
+            >
               Sign Out
             </button>
           ) : (
-            <Link href="/auth" className="px-3 py-1 rounded font-semibold transition-colors"
+            <Link href="/auth" className="px-3 py-1.5 rounded-lg font-semibold transition-all hover:opacity-90"
               style={{ backgroundColor: '#FFD700', color: '#006747' }}>
               Sign In
             </Link>
