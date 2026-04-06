@@ -56,7 +56,7 @@ export default function Navbar() {
 
   const navLinks = [
     { href: '/leaderboard', label: 'Leaderboard', always: true },
-    { href: '/picks', label: 'My Picks', auth: true },
+    { href: '/picks', label: 'Edit Picks', auth: true },
     { href: '/my-score', label: 'My Score', auth: true },
     { href: '/account', label: 'Account', auth: true },
     { href: '/admin', label: 'Admin', admin: true },
