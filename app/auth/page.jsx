@@ -13,8 +13,30 @@ export default function AuthPage() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [success, setSuccess] = useState('')
+  const [showForgot, setShowForgot] = useState(false)
+  const [forgotEmail, setForgotEmail] = useState('')
+  const [forgotMsg, setForgotMsg] = useState('')
+  const [sendingReset, setSendingReset] = useState(false)
   const router = useRouter()
   const supabase = createClient()
+
+  const handleForgotPassword = async (e) => {
+    e.preventDefault()
+    setForgotMsg('')
+    if (!forgotEmail.trim()) { setForgotMsg('Please enter your email.'); return }
+    setSendingReset(true)
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(forgotEmail.trim(), {
+        redirectTo: `${window.location.origin}/reset-password`,
+      })
+      if (error) throw error
+      setForgotMsg('Check your email for a password reset link.')
+    } catch (err) {
+      setForgotMsg('Error: ' + err.message)
+    } finally {
+      setSendingReset(false)
+    }
+  }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -147,9 +169,20 @@ export default function AuthPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Password
-                </label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-sm font-medium text-gray-700">
+                    Password
+                  </label>
+                  {mode === 'signin' && (
+                    <button
+                      type="button"
+                      onClick={() => { setShowForgot(true); setForgotEmail(email); setForgotMsg('') }}
+                      className="text-xs text-gray-400 hover:text-gray-600 transition-colors"
+                    >
+                      Forgot password?
+                    </button>
+                  )}
+                </div>
                 <input
                   type="password"
                   value={password}
@@ -188,6 +221,50 @@ export default function AuthPage() {
           </div>
         </div>
       </main>
+
+      {/* Forgot password overlay */}
+      {showForgot && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 px-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6">
+            <h2 className="font-bold text-lg mb-1" style={{ color: '#006747' }}>Reset Password</h2>
+            <p className="text-sm text-gray-500 mb-4">
+              Enter your email and we'll send you a reset link.
+            </p>
+            <form onSubmit={handleForgotPassword} className="space-y-4">
+              <input
+                type="email"
+                value={forgotEmail}
+                onChange={e => setForgotEmail(e.target.value)}
+                placeholder="you@example.com"
+                className="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2"
+                required
+              />
+              {forgotMsg && (
+                <p className={`text-sm px-3 py-2 rounded-lg border ${forgotMsg.startsWith('Error') ? 'text-red-600 bg-red-50 border-red-200' : 'text-green-700 bg-green-50 border-green-200'}`}>
+                  {forgotMsg}
+                </p>
+              )}
+              <div className="flex gap-3">
+                <button
+                  type="submit"
+                  disabled={sendingReset}
+                  className="flex-1 py-2 rounded-lg font-bold text-sm disabled:opacity-50"
+                  style={{ backgroundColor: '#006747', color: '#FFD700' }}
+                >
+                  {sendingReset ? 'Sending...' : 'Send Reset Link'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setShowForgot(false); setForgotMsg('') }}
+                  className="flex-1 py-2 rounded-lg font-bold text-sm border border-gray-300 text-gray-600 hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
