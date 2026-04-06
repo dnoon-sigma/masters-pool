@@ -60,13 +60,15 @@ export async function GET() {
         }).filter(Boolean)
 
         const roundPoints = holes.reduce((sum, h) => sum + h.points, 0)
-        return { round: roundIndex + 1, holes, roundPoints }
+        const roundScoreToPar = holes.reduce((sum, h) => sum + h.relToPar, 0)
+        return { round: roundIndex + 1, holes, roundPoints, roundScoreToPar }
       })
 
       const totalPoints = rounds.reduce((sum, r) => sum + r.roundPoints, 0)
+      const scoreToPar = rounds.reduce((sum, r) => sum + r.roundScoreToPar, 0)
       const holesPlayed = rounds.reduce((sum, r) => sum + r.holes.length, 0)
 
-      return { espnId, name, isCut, position, rounds, totalPoints, holesPlayed }
+      return { espnId, name, isCut, position, rounds, totalPoints, scoreToPar, holesPlayed }
     })
 
     return NextResponse.json({ players })
