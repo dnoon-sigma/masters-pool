@@ -162,13 +162,34 @@ export default function PicksPage() {
         </div>
 
         {/* Rules */}
-        <div className="bg-white border border-yellow-300 rounded-xl p-4 mb-5 text-sm text-gray-700">
+        <div className="bg-white border border-yellow-300 rounded-xl p-4 mb-4 text-sm text-gray-700">
           <p className="font-semibold mb-1" style={{ color: '#006747' }}>Rules</p>
           <ul className="list-disc list-inside space-y-1 text-gray-600">
             <li>Pick <strong>6 golfers</strong> from any tier — no tier restrictions.</li>
             <li>Combined tier values must add up to <strong>at least 21</strong>.</li>
             <li>No duplicate golfers. Your <strong>5th and 6th lowest scorers</strong> are automatically tiebreakers.</li>
           </ul>
+        </div>
+
+        {/* Scoring */}
+        <div className="bg-white border border-gray-200 rounded-xl p-4 mb-5 text-sm text-gray-700">
+          <p className="font-semibold mb-2" style={{ color: '#006747' }}>How Scoring Works</p>
+          <p className="text-gray-600 mb-3">Your team score is the combined points of your <strong>4 best golfers</strong>. Your 5th and 6th best are tiebreakers only.</p>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+            {[
+              { label: 'Albatross', result: '+8 pts', color: 'bg-yellow-100 text-yellow-800' },
+              { label: 'Eagle', result: '+5 pts', color: 'bg-green-100 text-green-800' },
+              { label: 'Birdie', result: '+2 pts', color: 'bg-green-50 text-green-700' },
+              { label: 'Par', result: '0 pts', color: 'bg-gray-100 text-gray-600' },
+              { label: 'Bogey', result: '−1 pt', color: 'bg-red-50 text-red-600' },
+              { label: 'Double+', result: '−3 pts', color: 'bg-red-100 text-red-700' },
+            ].map(({ label, result, color }) => (
+              <div key={label} className={`flex items-center justify-between rounded-lg px-3 py-1.5 ${color}`}>
+                <span className="font-medium">{label}</span>
+                <span className="font-bold">{result}</span>
+              </div>
+            ))}
+          </div>
         </div>
 
         {/* Your Team */}
