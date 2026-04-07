@@ -161,20 +161,14 @@ export default function PicksPage() {
           ) : null}
         </div>
 
-        {/* Rules */}
-        <div className="bg-white border border-yellow-300 rounded-xl p-4 mb-4 text-sm text-gray-700">
-          <p className="font-semibold mb-1" style={{ color: '#006747' }}>Rules</p>
-          <ul className="list-disc list-inside space-y-1 text-gray-600">
+        {/* Rules & Scoring */}
+        <div className="bg-white border border-yellow-300 rounded-xl p-4 mb-5 text-sm text-gray-700">
+          <p className="font-semibold mb-2" style={{ color: '#006747' }}>Rules & Scoring</p>
+          <ul className="list-disc list-inside space-y-1 text-gray-600 mb-3">
             <li>Pick <strong>6 golfers</strong> from any tier — no tier restrictions.</li>
             <li>Combined tier values must add up to <strong>at least 21</strong>.</li>
-            <li>No duplicate golfers. Your <strong>5th and 6th lowest scorers</strong> are automatically tiebreakers.</li>
+            <li>Your <strong>4 best golfers</strong> count toward your score. Your 5th and 6th best are tiebreakers only.</li>
           </ul>
-        </div>
-
-        {/* Scoring */}
-        <div className="bg-white border border-gray-200 rounded-xl p-4 mb-5 text-sm text-gray-700">
-          <p className="font-semibold mb-2" style={{ color: '#006747' }}>How Scoring Works</p>
-          <p className="text-gray-600 mb-3">Your team score is the combined points of your <strong>4 best golfers</strong>. Your 5th and 6th best are tiebreakers only.</p>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
             {[
               { label: 'Albatross', result: '+8 pts', color: 'bg-yellow-100 text-yellow-800' },
