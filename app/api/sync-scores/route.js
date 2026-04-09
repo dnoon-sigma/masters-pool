@@ -35,6 +35,29 @@ function calcGolferPoints(competitor) {
   return totalPoints
 }
 
+/**
+ * Update a single golfer row using a direct PATCH to PostgREST.
+ * Bypasses the supabase-js client to guarantee a partial-column UPDATE
+ * with no INSERT path (unlike upsert).
+ */
+async function patchGolfer(id, fields) {
+  const url = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/golfers?id=eq.${encodeURIComponent(id)}`
+  const res = await fetch(url, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`,
+      'apikey': process.env.SUPABASE_SERVICE_ROLE_KEY,
+      'Prefer': 'return=minimal',
+    },
+    body: JSON.stringify(fields),
+  })
+  if (!res.ok) {
+    const body = await res.text()
+    throw new Error(`PATCH failed for golfer ${id}: ${body}`)
+  }
+}
+
 export async function POST(request) {
   try {
     const supabase = createAdminClient()
@@ -77,7 +100,7 @@ export async function POST(request) {
     const { data: golfers, error: fetchError } = await supabase.from('golfers').select('*')
     if (fetchError) throw fetchError
 
-    const updates = []
+    let updated = 0
 
     for (const competitor of competitors) {
       const espnId = competitor.id?.toString()
@@ -94,51 +117,28 @@ export async function POST(request) {
 
       if (!golfer) continue
 
-      // Safety check: if somehow a golfer has no name in the DB, skip rather than corrupt
-      if (!golfer.name) {
-        console.error(`[sync-scores] Skipping golfer id=${golfer.id} — name is null/empty in DB`)
-        continue
-      }
-
       const score = calcGolferPoints(competitor)
 
-      // Include ALL fields (id, name, tier, espn_id) so a PUT-style update never
-      // overwrites required columns with null
-      updates.push({
-        id: golfer.id,
-        name: golfer.name,
-        tier: golfer.tier,
-        espn_id: golfer.espn_id ?? null,
+      // PATCH only the score-related columns — no INSERT path possible
+      await patchGolfer(golfer.id, {
         score,
         position: position ? parseInt(position) : null,
         is_cut: isCut,
         holes_played: holesPlayed,
         updated_at: new Date().toISOString(),
       })
-    }
 
-    console.log(`[sync-scores] ${updates.length} golfer(s) matched. Sample:`, updates[0] ?? 'none')
-
-    // Update existing golfers one at a time — never insert
-    for (const update of updates) {
-      const { id, ...fields } = update
-      const { error: updateError } = await supabase
-        .from('golfers')
-        .update(fields)
-        .eq('id', id)
-      if (updateError) {
-        console.error(`[sync-scores] Failed update for "${fields.name}" (id=${id}):`, updateError)
-        throw new Error(`Failed to update golfer "${fields.name}": ${updateError.message}`)
-      }
+      updated++
     }
 
     // Update last_score_sync in settings
-    await supabase
+    const { error: settingsError } = await supabase
       .from('settings')
       .update({ last_score_sync: new Date().toISOString() })
-      .neq('id', '00000000-0000-0000-0000-000000000000') // update all rows
+      .neq('id', '00000000-0000-0000-0000-000000000000')
+    if (settingsError) console.error('settings update error:', settingsError)
 
-    return NextResponse.json({ success: true, updated: updates.length })
+    return NextResponse.json({ success: true, updated })
   } catch (err) {
     console.error('sync-scores error:', err)
     return NextResponse.json({ error: err.message }, { status: 500 })
