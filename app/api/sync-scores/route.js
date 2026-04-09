@@ -98,6 +98,8 @@ export async function POST(request) {
 
       updates.push({
         id: golfer.id,
+        name: golfer.name,
+        tier: golfer.tier,
         score,
         position: position ? parseInt(position) : null,
         is_cut: isCut,
