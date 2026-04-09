@@ -78,107 +78,147 @@ async function patchGolfer(id, fields) {
   }
 }
 
-export async function POST(request) {
-  try {
-    const supabase = createAdminClient()
+/** Returns true if the current time is between 4:30 AM and 5:00 PM Pacific. */
+function isWithinSyncWindow() {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/Los_Angeles',
+    hour: 'numeric',
+    minute: 'numeric',
+    hour12: false,
+  }).formatToParts(new Date())
 
-    // Fetch ESPN scoreboard
-    const res = await fetch(ESPN_URL, {
-      headers: { 'User-Agent': 'MastersPool/1.0' },
-      cache: 'no-store',
+  const hour = parseInt(parts.find(p => p.type === 'hour').value)
+  const minute = parseInt(parts.find(p => p.type === 'minute').value)
+  const totalMinutes = hour * 60 + minute
+
+  return totalMinutes >= 4 * 60 + 30 && totalMinutes < 17 * 60
+}
+
+async function runSync() {
+  const supabase = createAdminClient()
+
+  // Fetch ESPN scoreboard
+  const res = await fetch(ESPN_URL, {
+    headers: { 'User-Agent': 'MastersPool/1.0' },
+    cache: 'no-store',
+  })
+
+  if (!res.ok) {
+    return NextResponse.json(
+      { error: `ESPN API returned ${res.status}` },
+      { status: 502 }
+    )
+  }
+
+  const data = await res.json()
+
+  const events = data?.events ?? []
+  if (events.length === 0) {
+    return NextResponse.json({ error: 'No events found in ESPN response' }, { status: 422 })
+  }
+
+  // Find the Masters specifically — fall back to first event if not found yet
+  const mastersEvent = events.find(e =>
+    e.name?.toLowerCase().includes('masters') ||
+    e.shortName?.toLowerCase().includes('masters')
+  ) ?? events[0]
+
+  const eventName = mastersEvent?.name ?? 'Unknown event'
+  const competition = mastersEvent?.competitions?.[0]
+  const competitors = competition?.competitors ?? []
+
+  if (competitors.length === 0) {
+    return NextResponse.json({ error: `No competitors found in "${eventName}"` }, { status: 422 })
+  }
+
+  // Fetch all golfers from DB so we can match by espn_id or name
+  const { data: golfers, error: fetchError } = await supabase.from('golfers').select('*')
+  if (fetchError) throw fetchError
+
+  let updated = 0
+
+  for (const competitor of competitors) {
+    const espnId = competitor.id?.toString()
+    const athleteName = competitor.athlete?.displayName ?? competitor.athlete?.fullName ?? ''
+    const statusType = competitor.status?.type?.name ?? ''
+    const isCut = statusType === 'cut' || statusType === 'WD' || statusType === 'DQ'
+    const position = competitor.status?.position?.displayText?.replace('T', '') ?? null
+    const holesPlayed = competitor.status?.holesPlayed ?? 0
+
+    // Match golfer by espn_id first, then by name
+    const golfer =
+      golfers.find(g => g.espn_id && g.espn_id === espnId) ||
+      golfers.find(g => g.name?.toLowerCase() === athleteName.toLowerCase())
+
+    if (!golfer) continue
+
+    const score = calcGolferPoints(competitor)
+
+    // PATCH score columns + espn_id (if ESPN provided one) so future
+    // syncs can match by ID instead of name
+    await patchGolfer(golfer.id, {
+      ...(espnId ? { espn_id: espnId } : {}),
+      score,
+      position: position ? parseInt(position) : null,
+      is_cut: isCut,
+      holes_played: holesPlayed,
+      updated_at: new Date().toISOString(),
     })
 
-    if (!res.ok) {
-      return NextResponse.json(
-        { error: `ESPN API returned ${res.status}` },
-        { status: 502 }
-      )
-    }
+    updated++
+  }
 
-    const data = await res.json()
+  // Update last_score_sync in settings
+  const { error: settingsError } = await supabase
+    .from('settings')
+    .update({ last_score_sync: new Date().toISOString() })
+    .neq('id', '00000000-0000-0000-0000-000000000000')
+  if (settingsError) console.error('settings update error:', settingsError)
 
-    const events = data?.events ?? []
-    if (events.length === 0) {
-      return NextResponse.json({ error: 'No events found in ESPN response' }, { status: 422 })
-    }
+  // Temporary diagnostic: drill into hole-level data
+  const sample = competitors[0]
+  const sampleLinescores = sample?.linescores ?? []
+  const sampleRound = sampleLinescores[0]
+  const sampleHoles = sampleRound?.linescores ?? []
+  const sampleHole = sampleHoles[0]
+  const debug = {
+    sampleName: sample?.athlete?.displayName,
+    sampleScore: calcGolferPoints(sample),
+    topLevelCount: sampleLinescores.length,
+    nestedHoleCount: sampleHoles.length,
+    holeScoreType: sampleHole?.scoreType,
+    holePeriods: sampleHoles.map(h => h.period),
+    holeValues: sampleHoles.map(h => h.value),
+  }
 
-    // Find the Masters specifically — fall back to first event if not found yet
-    const mastersEvent = events.find(e =>
-      e.name?.toLowerCase().includes('masters') ||
-      e.shortName?.toLowerCase().includes('masters')
-    ) ?? events[0]
+  return NextResponse.json({ success: true, updated, debug })
+}
 
-    const eventName = mastersEvent?.name ?? 'Unknown event'
-    const competition = mastersEvent?.competitions?.[0]
-    const competitors = competition?.competitors ?? []
-
-    if (competitors.length === 0) {
-      return NextResponse.json({ error: `No competitors found in "${eventName}"` }, { status: 422 })
-    }
-
-    // Fetch all golfers from DB so we can match by espn_id or name
-    const { data: golfers, error: fetchError } = await supabase.from('golfers').select('*')
-    if (fetchError) throw fetchError
-
-    let updated = 0
-
-    for (const competitor of competitors) {
-      const espnId = competitor.id?.toString()
-      const athleteName = competitor.athlete?.displayName ?? competitor.athlete?.fullName ?? ''
-      const statusType = competitor.status?.type?.name ?? ''
-      const isCut = statusType === 'cut' || statusType === 'WD' || statusType === 'DQ'
-      const position = competitor.status?.position?.displayText?.replace('T', '') ?? null
-      const holesPlayed = competitor.status?.holesPlayed ?? 0
-
-      // Match golfer by espn_id first, then by name
-      const golfer =
-        golfers.find(g => g.espn_id && g.espn_id === espnId) ||
-        golfers.find(g => g.name?.toLowerCase() === athleteName.toLowerCase())
-
-      if (!golfer) continue
-
-      const score = calcGolferPoints(competitor)
-
-      // PATCH score columns + espn_id (if ESPN provided one) so future
-      // syncs can match by ID instead of name
-      await patchGolfer(golfer.id, {
-        ...(espnId ? { espn_id: espnId } : {}),
-        score,
-        position: position ? parseInt(position) : null,
-        is_cut: isCut,
-        holes_played: holesPlayed,
-        updated_at: new Date().toISOString(),
-      })
-
-      updated++
-    }
-
-    // Update last_score_sync in settings
-    const { error: settingsError } = await supabase
-      .from('settings')
-      .update({ last_score_sync: new Date().toISOString() })
-      .neq('id', '00000000-0000-0000-0000-000000000000')
-    if (settingsError) console.error('settings update error:', settingsError)
-
-    // Temporary diagnostic: drill into hole-level data
-    const sample = competitors[0]
-    const sampleLinescores = sample?.linescores ?? []
-    const sampleRound = sampleLinescores[0]
-    const sampleHoles = sampleRound?.linescores ?? []
-    const sampleHole = sampleHoles[0]
-    const debug = {
-      sampleName: sample?.athlete?.displayName,
-      sampleScore: calcGolferPoints(sample),
-      topLevelCount: sampleLinescores.length,
-      nestedHoleCount: sampleHoles.length,
-      holeScoreType: sampleHole?.scoreType,
-      holePeriods: sampleHoles.map(h => h.period),
-      holeValues: sampleHoles.map(h => h.value),
-    }
-
-    return NextResponse.json({ success: true, updated, debug })
+// Manual trigger from the admin panel
+export async function POST(request) {
+  try {
+    return await runSync()
   } catch (err) {
     console.error('sync-scores error:', err)
+    return NextResponse.json({ error: err.message }, { status: 500 })
+  }
+}
+
+// Vercel Cron: runs every 5 minutes, guarded by secret + time window
+export async function GET(request) {
+  const authHeader = request.headers.get('authorization')
+  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
+  if (!isWithinSyncWindow()) {
+    return NextResponse.json({ skipped: true, reason: 'Outside sync window (4:30 AM – 5:00 PM Pacific)' })
+  }
+
+  try {
+    return await runSync()
+  } catch (err) {
+    console.error('cron sync-scores error:', err)
     return NextResponse.json({ error: err.message }, { status: 500 })
   }
 }
