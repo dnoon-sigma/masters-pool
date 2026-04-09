@@ -292,11 +292,21 @@ export default function LeaderboardPage() {
   const supabase = createClient()
 
   const loadData = useCallback(async () => {
-    const [{ data: golfersData }, { data: picks }, { data: profiles }, { data: settings }, scorecardRes] = await Promise.all([
+    // Fetch settings first to check when scores were last synced
+    const { data: settings } = await supabase
+      .from('settings').select('last_score_sync').limit(1).single()
+
+    // Auto-sync if last sync was more than 4 minutes ago (or never)
+    const lastSyncTime = settings?.last_score_sync ? new Date(settings.last_score_sync) : null
+    const staleMs = 4 * 60 * 1000
+    if (!lastSyncTime || Date.now() - lastSyncTime.getTime() > staleMs) {
+      fetch('/api/sync-scores', { method: 'POST' }).catch(() => {})
+    }
+
+    const [{ data: golfersData }, { data: picks }, { data: profiles }, scorecardRes] = await Promise.all([
       supabase.from('golfers').select('*'),
       supabase.from('picks').select('user_id, golfer_id, slot'),
       supabase.from('profiles').select('user_id, username'),
-      supabase.from('settings').select('last_score_sync').limit(1).single(),
       fetch('/api/scorecard'),
     ])
 
