@@ -99,7 +99,7 @@ function HoleByHole({ rounds }) {
 
 // ─── Contestants tab ────────────────────────────────────────────────────────
 
-function ContestantsTab({ teams, golferMap, scorecardByName }) {
+function ContestantsTab({ teams, golferMap, scorecardByName, pickCounts }) {
   const [expanded, setExpanded] = useState({})
 
   if (teams.length === 0) {
@@ -140,6 +140,9 @@ function ContestantsTab({ teams, golferMap, scorecardByName }) {
               <div className="p-3 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
                 {team.golferDetails.map(({ golfer, score }, i) => {
                   const isTiebreaker = i >= 4
+                  const pct = golfer && teams.length > 0 && pickCounts?.[golfer.id] != null
+                    ? Math.round((pickCounts[golfer.id] / teams.length) * 100)
+                    : null
                   return (
                     <div key={golfer?.id ?? i}
                       className={`rounded-lg p-2 text-center text-xs border ${isTiebreaker ? 'border-dashed border-gray-300 bg-gray-50 opacity-60' : 'border-gray-200 bg-white'}`}
@@ -157,6 +160,9 @@ function ContestantsTab({ teams, golferMap, scorecardByName }) {
                       )}
                       {golfer?.position && !golfer.is_cut && (
                         <div className="text-gray-400 text-xs mt-0.5">T{golfer.position}</div>
+                      )}
+                      {pct !== null && (
+                        <div className="text-gray-400 text-[10px] mt-0.5">{pct}% picked</div>
                       )}
                     </div>
                   )
@@ -263,6 +269,7 @@ function GolfersTab({ golfers, scorecardByName }) {
 export default function LeaderboardPage() {
   const [tab, setTab] = useState('contestants')
   const [teams, setTeams] = useState([])
+  const [pickCounts, setPickCounts] = useState({})
   const [golfers, setGolfers] = useState([])
   const [scorecardByName, setScorecardByName] = useState({})
   const [lastSync, setLastSync] = useState(null)
@@ -297,6 +304,13 @@ export default function LeaderboardPage() {
 
     const profileMap = {}
     ;(profiles || []).forEach(p => { profileMap[p.user_id] = p.username })
+
+    // Build pick counts per golfer
+    const counts = {}
+    ;(picks || []).forEach(({ golfer_id }) => {
+      counts[golfer_id] = (counts[golfer_id] || 0) + 1
+    })
+    setPickCounts(counts)
 
     // Build teams
     const teamMap = {}
@@ -377,7 +391,7 @@ export default function LeaderboardPage() {
           <div className="flex items-center justify-center py-20 text-gray-400">Loading...</div>
         ) : tab === 'contestants' ? (
           <>
-            <ContestantsTab teams={teams} golferMap={{}} scorecardByName={scorecardByName} />
+            <ContestantsTab teams={teams} golferMap={{}} scorecardByName={scorecardByName} pickCounts={pickCounts} />
             <div className="mt-6 bg-white rounded-xl border border-gray-100 shadow-sm p-4">
               <p className="text-xs text-gray-500 font-semibold uppercase tracking-widest mb-2">Scoring</p>
               <div className="flex flex-wrap gap-3 text-xs text-gray-600">
