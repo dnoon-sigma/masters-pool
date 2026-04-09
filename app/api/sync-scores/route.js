@@ -160,16 +160,24 @@ export async function POST(request) {
       .neq('id', '00000000-0000-0000-0000-000000000000')
     if (settingsError) console.error('settings update error:', settingsError)
 
-    // Temporary diagnostic: show ESPN linescore shape for first competitor
+    // Temporary diagnostic: drill into hole-level data
     const sample = competitors[0]
     const sampleLinescores = sample?.linescores ?? []
+    const sampleRound = sampleLinescores[0]
+    const sampleHoles = sampleRound?.linescores ?? []
+    const sampleHole = sampleHoles[0]
     const debug = {
-      espnShape: sampleLinescores[0]?.linescores ? 'nested' : 'flat',
-      firstEntryKeys: Object.keys(sampleLinescores[0] ?? {}),
-      firstEntryValue: sampleLinescores[0]?.value,
-      firstEntryPar: sampleLinescores[0]?.par,
-      nestedHoleCount: sampleLinescores[0]?.linescores?.length ?? 0,
       topLevelCount: sampleLinescores.length,
+      nestedHoleCount: sampleHoles.length,
+      roundKeys: Object.keys(sampleRound ?? {}),
+      roundValue: sampleRound?.value,
+      holeKeys: Object.keys(sampleHole ?? {}),
+      holeValue: sampleHole?.value,
+      holePeriod: sampleHole?.period,
+      holePar: sampleHole?.par,
+      holeStatistics: sampleHole?.statistics,
+      sampleName: sample?.athlete?.displayName,
+      sampleScore: calcGolferPoints(sample),
     }
 
     return NextResponse.json({ success: true, updated, debug })
