@@ -3,11 +3,6 @@ import { createAdminClient } from '@/lib/supabase/admin'
 
 const ESPN_URL = 'https://site.api.espn.com/apis/site/v2/sports/golf/pga/scoreboard'
 
-/**
- * Calculate pool points from a golfer's hole scores across all rounds.
- * ESPN provides linescores per round, each with a "value" per hole (strokes).
- * We compute score relative to par per hole, then map to pool points.
- */
 function pointsForRelativeToPar(relativeToPar) {
   if (relativeToPar <= -3) return 8  // Albatross or better
   if (relativeToPar === -2) return 5  // Eagle
@@ -17,22 +12,37 @@ function pointsForRelativeToPar(relativeToPar) {
   return -3                            // Double bogey or worse
 }
 
-function calcGolferPoints(competitor) {
-  let totalPoints = 0
+function scoreHoles(holes) {
+  let pts = 0
+  for (const hole of holes) {
+    const strokes = Number(hole.value)
+    const par = Number(hole.par)
+    if (!strokes || !par) continue   // skip 0 / null / NaN
+    pts += pointsForRelativeToPar(strokes - par)
+  }
+  return pts
+}
 
+/**
+ * Calculate pool points from ESPN competitor data.
+ * Handles two ESPN linescore shapes:
+ *   Nested  – competitor.linescores = [{…, linescores: [{value, par}, …]}, …]
+ *   Flat    – competitor.linescores = [{value, par}, …]  (one entry per hole)
+ */
+function calcGolferPoints(competitor) {
   const linescores = competitor?.linescores ?? []
-  for (const round of linescores) {
-    const holes = round?.linescores ?? []
-    for (const hole of holes) {
-      const strokes = hole.value
-      const par = hole.par
-      if (strokes == null || par == null || strokes === 0) continue
-      const rel = strokes - par
-      totalPoints += pointsForRelativeToPar(rel)
-    }
+  if (linescores.length === 0) return 0
+
+  // Nested: each entry is a round that contains per-hole linescores
+  const firstHoles = linescores[0]?.linescores ?? []
+  if (firstHoles.length > 0) {
+    let pts = 0
+    for (const round of linescores) pts += scoreHoles(round.linescores ?? [])
+    return pts
   }
 
-  return totalPoints
+  // Flat: the top-level entries are the holes themselves
+  return scoreHoles(linescores)
 }
 
 /**
@@ -119,8 +129,10 @@ export async function POST(request) {
 
       const score = calcGolferPoints(competitor)
 
-      // PATCH only the score-related columns — no INSERT path possible
+      // PATCH score columns + espn_id (if ESPN provided one) so future
+      // syncs can match by ID instead of name
       await patchGolfer(golfer.id, {
+        ...(espnId ? { espn_id: espnId } : {}),
         score,
         position: position ? parseInt(position) : null,
         is_cut: isCut,
@@ -138,7 +150,19 @@ export async function POST(request) {
       .neq('id', '00000000-0000-0000-0000-000000000000')
     if (settingsError) console.error('settings update error:', settingsError)
 
-    return NextResponse.json({ success: true, updated })
+    // Temporary diagnostic: show ESPN linescore shape for first competitor
+    const sample = competitors[0]
+    const sampleLinescores = sample?.linescores ?? []
+    const debug = {
+      espnShape: sampleLinescores[0]?.linescores ? 'nested' : 'flat',
+      firstEntryKeys: Object.keys(sampleLinescores[0] ?? {}),
+      firstEntryValue: sampleLinescores[0]?.value,
+      firstEntryPar: sampleLinescores[0]?.par,
+      nestedHoleCount: sampleLinescores[0]?.linescores?.length ?? 0,
+      topLevelCount: sampleLinescores.length,
+    }
+
+    return NextResponse.json({ success: true, updated, debug })
   } catch (err) {
     console.error('sync-scores error:', err)
     return NextResponse.json({ error: err.message }, { status: 500 })

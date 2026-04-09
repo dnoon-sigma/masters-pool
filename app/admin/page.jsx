@@ -213,7 +213,11 @@ export default function AdminPage() {
       const res = await fetch('/api/sync-scores', { method: 'POST' })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error || 'Sync failed')
-      setSyncMsg(`Sync complete. ${json.updated ?? 0} golfers updated.`)
+      const dbg = json.debug
+      const debugStr = dbg
+        ? ` | shape=${dbg.espnShape} topLevel=${dbg.topLevelCount} nested=${dbg.nestedHoleCount} par=${dbg.firstEntryPar ?? 'none'} keys=${dbg.firstEntryKeys?.join(',')}`
+        : ''
+      setSyncMsg(`Sync complete. ${json.updated ?? 0} golfers updated.${debugStr}`)
       await loadGolfers()
     } catch (err) {
       setSyncMsg('Error: ' + err.message)
