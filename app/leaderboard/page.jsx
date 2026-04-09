@@ -143,6 +143,9 @@ function ContestantsTab({ teams, golferMap, scorecardByName, pickCounts }) {
                   const pct = golfer && teams.length > 0 && pickCounts?.[golfer.id] != null
                     ? Math.round((pickCounts[golfer.id] / teams.length) * 100)
                     : null
+                  const card = scorecardByName?.[golfer?.name?.toLowerCase()]
+                  const lastActiveRound = card?.rounds?.filter(r => r.holes.length > 0).slice(-1)[0]
+                  const thruHoles = lastActiveRound?.holes?.length ?? 0
                   return (
                     <div key={golfer?.id ?? i}
                       className={`rounded-lg p-2 text-center text-xs border ${isTiebreaker ? 'border-dashed border-gray-300 bg-gray-50 opacity-60' : 'border-gray-200 bg-white'}`}
@@ -160,6 +163,13 @@ function ContestantsTab({ teams, golferMap, scorecardByName, pickCounts }) {
                       )}
                       {golfer?.position && !golfer.is_cut && (
                         <div className="text-gray-400 text-xs mt-0.5">T{golfer.position}</div>
+                      )}
+                      {thruHoles > 0 && !golfer?.is_cut && (
+                        <div className="mt-1">
+                          <span className="bg-gray-100 text-gray-500 text-[10px] font-semibold px-1.5 py-0.5 rounded-full">
+                            Thru {thruHoles === 18 ? 'F' : thruHoles}
+                          </span>
+                        </div>
                       )}
                       {pct !== null && (
                         <div className="text-gray-400 text-[10px] mt-0.5">{pct}% picked</div>
