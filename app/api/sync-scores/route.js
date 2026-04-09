@@ -35,6 +35,29 @@ function calcGolferPoints(competitor) {
   return totalPoints
 }
 
+/**
+ * Update a single golfer row using a direct PATCH to PostgREST.
+ * Bypasses the supabase-js client to guarantee a partial-column UPDATE
+ * with no INSERT path (unlike upsert).
+ */
+async function patchGolfer(id, fields) {
+  const url = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/golfers?id=eq.${encodeURIComponent(id)}`
+  const res = await fetch(url, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`,
+      'apikey': process.env.SUPABASE_SERVICE_ROLE_KEY,
+      'Prefer': 'return=minimal',
+    },
+    body: JSON.stringify(fields),
+  })
+  if (!res.ok) {
+    const body = await res.text()
+    throw new Error(`PATCH failed for golfer ${id}: ${body}`)
+  }
+}
+
 export async function POST(request) {
   try {
     const supabase = createAdminClient()
@@ -77,7 +100,7 @@ export async function POST(request) {
     const { data: golfers, error: fetchError } = await supabase.from('golfers').select('*')
     if (fetchError) throw fetchError
 
-    const updates = []
+    let updated = 0
 
     for (const competitor of competitors) {
       const espnId = competitor.id?.toString()
@@ -90,37 +113,32 @@ export async function POST(request) {
       // Match golfer by espn_id first, then by name
       const golfer =
         golfers.find(g => g.espn_id && g.espn_id === espnId) ||
-        golfers.find(g => g.name.toLowerCase() === athleteName.toLowerCase())
+        golfers.find(g => g.name?.toLowerCase() === athleteName.toLowerCase())
 
       if (!golfer) continue
 
       const score = calcGolferPoints(competitor)
 
-      updates.push({
-        id: golfer.id,
+      // PATCH only the score-related columns — no INSERT path possible
+      await patchGolfer(golfer.id, {
         score,
         position: position ? parseInt(position) : null,
         is_cut: isCut,
         holes_played: holesPlayed,
         updated_at: new Date().toISOString(),
       })
-    }
 
-    // Upsert all updates
-    if (updates.length > 0) {
-      const { error: upsertError } = await supabase
-        .from('golfers')
-        .upsert(updates, { onConflict: 'id' })
-      if (upsertError) throw upsertError
+      updated++
     }
 
     // Update last_score_sync in settings
-    await supabase
+    const { error: settingsError } = await supabase
       .from('settings')
       .update({ last_score_sync: new Date().toISOString() })
-      .neq('id', '00000000-0000-0000-0000-000000000000') // update all rows
+      .neq('id', '00000000-0000-0000-0000-000000000000')
+    if (settingsError) console.error('settings update error:', settingsError)
 
-    return NextResponse.json({ success: true, updated: updates.length })
+    return NextResponse.json({ success: true, updated })
   } catch (err) {
     console.error('sync-scores error:', err)
     return NextResponse.json({ error: err.message }, { status: 500 })
