@@ -119,8 +119,10 @@ export async function POST(request) {
 
       const score = calcGolferPoints(competitor)
 
-      // PATCH only the score-related columns — no INSERT path possible
+      // PATCH score columns + espn_id (if ESPN provided one) so future
+      // syncs can match by ID instead of name
       await patchGolfer(golfer.id, {
+        ...(espnId ? { espn_id: espnId } : {}),
         score,
         position: position ? parseInt(position) : null,
         is_cut: isCut,
