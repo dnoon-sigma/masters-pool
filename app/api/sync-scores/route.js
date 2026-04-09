@@ -78,22 +78,6 @@ async function patchGolfer(id, fields) {
   }
 }
 
-/** Returns true if the current time is between 4:30 AM and 5:00 PM Pacific. */
-function isWithinSyncWindow() {
-  const parts = new Intl.DateTimeFormat('en-US', {
-    timeZone: 'America/Los_Angeles',
-    hour: 'numeric',
-    minute: 'numeric',
-    hour12: false,
-  }).formatToParts(new Date())
-
-  const hour = parseInt(parts.find(p => p.type === 'hour').value)
-  const minute = parseInt(parts.find(p => p.type === 'minute').value)
-  const totalMinutes = hour * 60 + minute
-
-  return totalMinutes >= 4 * 60 + 30 && totalMinutes < 17 * 60
-}
-
 async function runSync() {
   const supabase = createAdminClient()
 
@@ -204,21 +188,3 @@ export async function POST(request) {
   }
 }
 
-// Vercel Cron: runs every 5 minutes, guarded by secret + time window
-export async function GET(request) {
-  const authHeader = request.headers.get('authorization')
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
-
-  if (!isWithinSyncWindow()) {
-    return NextResponse.json({ skipped: true, reason: 'Outside sync window (4:30 AM – 5:00 PM Pacific)' })
-  }
-
-  try {
-    return await runSync()
-  } catch (err) {
-    console.error('cron sync-scores error:', err)
-    return NextResponse.json({ error: err.message }, { status: 500 })
-  }
-}
