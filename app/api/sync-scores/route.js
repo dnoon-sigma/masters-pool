@@ -106,12 +106,14 @@ export async function POST(request) {
       })
     }
 
-    // Upsert all updates
-    if (updates.length > 0) {
-      const { error: upsertError } = await supabase
+    // Update existing golfers (never insert — unmatched competitors are skipped above)
+    for (const update of updates) {
+      const { id, ...fields } = update
+      const { error: updateError } = await supabase
         .from('golfers')
-        .upsert(updates, { onConflict: 'id' })
-      if (upsertError) throw upsertError
+        .update(fields)
+        .eq('id', id)
+      if (updateError) throw updateError
     }
 
     // Update last_score_sync in settings
