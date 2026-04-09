@@ -140,8 +140,8 @@ function ContestantsTab({ teams, golferMap, scorecardByName, pickCounts }) {
               <div className="p-3 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
                 {team.golferDetails.map(({ golfer, score }, i) => {
                   const isTiebreaker = i >= 4
-                  const pct = golfer && teams.length > 0 && pickCounts?.[golfer.id] != null
-                    ? Math.round((pickCounts[golfer.id] / teams.length) * 100)
+                  const pct = golfer && teams.length > 0
+                    ? Math.round(((pickCounts?.[golfer.id] ?? 0) / teams.length) * 100)
                     : null
                   const card = scorecardByName?.[golfer?.name?.toLowerCase()]
                   const lastActiveRound = card?.rounds?.filter(r => r.holes.length > 0).slice(-1)[0]
@@ -224,8 +224,8 @@ function GolfersTab({ golfers, scorecardByName, pickCounts, totalTeams }) {
         const holesPlayed = card?.holesPlayed ?? golfer.holes_played ?? 0
         const position = card?.position ?? (golfer.position ? `T${golfer.position}` : null)
         const isOpen = expanded[golfer.id]
-        const pct = totalTeams > 0 && pickCounts?.[golfer.id] != null
-          ? Math.round((pickCounts[golfer.id] / totalTeams) * 100)
+        const pct = totalTeams > 0
+          ? Math.round(((pickCounts?.[golfer.id] ?? 0) / totalTeams) * 100)
           : null
 
         return (
