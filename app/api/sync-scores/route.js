@@ -3,6 +3,9 @@ import { createAdminClient } from '@/lib/supabase/admin'
 
 const ESPN_URL = 'https://site.api.espn.com/apis/site/v2/sports/golf/pga/scoreboard'
 
+// Augusta National hole pars, holes 1–18
+const AUGUSTA_PARS = [4, 5, 4, 3, 4, 3, 4, 5, 4, 4, 4, 3, 5, 4, 5, 3, 4, 4]
+
 function pointsForRelativeToPar(relativeToPar) {
   if (relativeToPar <= -3) return 8  // Albatross or better
   if (relativeToPar === -2) return 5  // Eagle
@@ -12,12 +15,26 @@ function pointsForRelativeToPar(relativeToPar) {
   return -3                            // Double bogey or worse
 }
 
+function holePar(hole) {
+  // Try ESPN's statistics array for a "par" entry
+  const parStat = hole.statistics?.find(s => s.name?.toLowerCase() === 'par')
+  if (parStat) {
+    const v = Number(parStat.value)
+    if (v) return v
+  }
+  // Fall back to Augusta National layout using hole number (period field)
+  const holeNum = Number(hole.period)
+  if (holeNum >= 1 && holeNum <= 18) return AUGUSTA_PARS[holeNum - 1]
+  return null
+}
+
 function scoreHoles(holes) {
   let pts = 0
   for (const hole of holes) {
     const strokes = Number(hole.value)
-    const par = Number(hole.par)
-    if (!strokes || !par) continue   // skip 0 / null / NaN
+    if (!strokes || isNaN(strokes)) continue
+    const par = holePar(hole)
+    if (!par) continue
     pts += pointsForRelativeToPar(strokes - par)
   }
   return pts
@@ -25,24 +42,17 @@ function scoreHoles(holes) {
 
 /**
  * Calculate pool points from ESPN competitor data.
- * Handles two ESPN linescore shapes:
- *   Nested  – competitor.linescores = [{…, linescores: [{value, par}, …]}, …]
- *   Flat    – competitor.linescores = [{value, par}, …]  (one entry per hole)
+ * ESPN returns nested rounds: competitor.linescores = [{ linescores: [hole, …] }, …]
+ * Each hole has value (strokes) and a period (hole number 1–18).
+ * Par comes from hole.statistics["par"] or from the Augusta National layout.
  */
 function calcGolferPoints(competitor) {
-  const linescores = competitor?.linescores ?? []
-  if (linescores.length === 0) return 0
-
-  // Nested: each entry is a round that contains per-hole linescores
-  const firstHoles = linescores[0]?.linescores ?? []
-  if (firstHoles.length > 0) {
-    let pts = 0
-    for (const round of linescores) pts += scoreHoles(round.linescores ?? [])
-    return pts
+  const rounds = competitor?.linescores ?? []
+  let pts = 0
+  for (const round of rounds) {
+    pts += scoreHoles(round.linescores ?? [])
   }
-
-  // Flat: the top-level entries are the holes themselves
-  return scoreHoles(linescores)
+  return pts
 }
 
 /**
