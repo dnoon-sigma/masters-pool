@@ -167,17 +167,13 @@ export async function POST(request) {
     const sampleHoles = sampleRound?.linescores ?? []
     const sampleHole = sampleHoles[0]
     const debug = {
-      topLevelCount: sampleLinescores.length,
-      nestedHoleCount: sampleHoles.length,
-      roundKeys: Object.keys(sampleRound ?? {}),
-      roundValue: sampleRound?.value,
-      holeKeys: Object.keys(sampleHole ?? {}),
-      holeValue: sampleHole?.value,
-      holePeriod: sampleHole?.period,
-      holePar: sampleHole?.par,
-      holeStatistics: sampleHole?.statistics,
       sampleName: sample?.athlete?.displayName,
       sampleScore: calcGolferPoints(sample),
+      topLevelCount: sampleLinescores.length,
+      nestedHoleCount: sampleHoles.length,
+      holeScoreType: sampleHole?.scoreType,
+      holePeriods: sampleHoles.map(h => h.period),
+      holeValues: sampleHoles.map(h => h.value),
     }
 
     return NextResponse.json({ success: true, updated, debug })
