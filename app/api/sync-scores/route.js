@@ -90,16 +90,25 @@ export async function POST(request) {
       // Match golfer by espn_id first, then by name
       const golfer =
         golfers.find(g => g.espn_id && g.espn_id === espnId) ||
-        golfers.find(g => g.name.toLowerCase() === athleteName.toLowerCase())
+        golfers.find(g => g.name?.toLowerCase() === athleteName.toLowerCase())
 
       if (!golfer) continue
 
+      // Safety check: if somehow a golfer has no name in the DB, skip rather than corrupt
+      if (!golfer.name) {
+        console.error(`[sync-scores] Skipping golfer id=${golfer.id} — name is null/empty in DB`)
+        continue
+      }
+
       const score = calcGolferPoints(competitor)
 
+      // Include ALL fields (id, name, tier, espn_id) so a PUT-style update never
+      // overwrites required columns with null
       updates.push({
         id: golfer.id,
         name: golfer.name,
         tier: golfer.tier,
+        espn_id: golfer.espn_id ?? null,
         score,
         position: position ? parseInt(position) : null,
         is_cut: isCut,
@@ -108,14 +117,19 @@ export async function POST(request) {
       })
     }
 
-    // Update existing golfers (never insert — unmatched competitors are skipped above)
+    console.log(`[sync-scores] ${updates.length} golfer(s) matched. Sample:`, updates[0] ?? 'none')
+
+    // Update existing golfers one at a time — never insert
     for (const update of updates) {
       const { id, ...fields } = update
       const { error: updateError } = await supabase
         .from('golfers')
         .update(fields)
         .eq('id', id)
-      if (updateError) throw updateError
+      if (updateError) {
+        console.error(`[sync-scores] Failed update for "${fields.name}" (id=${id}):`, updateError)
+        throw new Error(`Failed to update golfer "${fields.name}": ${updateError.message}`)
+      }
     }
 
     // Update last_score_sync in settings
