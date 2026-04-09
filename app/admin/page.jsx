@@ -215,7 +215,7 @@ export default function AdminPage() {
       if (!res.ok) throw new Error(json.error || 'Sync failed')
       const dbg = json.debug
       const debugStr = dbg
-        ? ` | shape=${dbg.espnShape} topLevel=${dbg.topLevelCount} nested=${dbg.nestedHoleCount} par=${dbg.firstEntryPar ?? 'none'} keys=${dbg.firstEntryKeys?.join(',')}`
+        ? ` | ${dbg.sampleName}: score=${dbg.sampleScore} rounds=${dbg.topLevelCount} holes=${dbg.nestedHoleCount} holeKeys=${dbg.holeKeys?.join(',')} holeValue=${dbg.holeValue} holePeriod=${dbg.holePeriod} holePar=${dbg.holePar ?? 'none'} holeStats=${JSON.stringify(dbg.holeStatistics)}`
         : ''
       setSyncMsg(`Sync complete. ${json.updated ?? 0} golfers updated.${debugStr}`)
       await loadGolfers()
