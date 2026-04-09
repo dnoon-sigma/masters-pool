@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server'
 
 const ESPN_URL = 'https://site.api.espn.com/apis/site/v2/sports/golf/pga/scoreboard'
 
+const AUGUSTA_PARS = [4, 5, 4, 3, 4, 3, 4, 5, 4, 4, 4, 3, 5, 4, 5, 3, 4, 4]
+
 function resultName(relToPar) {
   if (relToPar <= -3) return 'Albatross'
   if (relToPar === -2) return 'Eagle'
@@ -53,9 +55,10 @@ export async function GET() {
 
       const rounds = (competitor.linescores ?? []).map((round, roundIndex) => {
         const holes = (round.linescores ?? []).map((hole, holeIndex) => {
-          const strokes = hole.value
-          const par = hole.par
-          if (!strokes || !par) return null
+          const strokes = Number(hole.value)
+          if (!strokes || isNaN(strokes)) return null
+          const par = hole.par != null ? Number(hole.par) : AUGUSTA_PARS[holeIndex]
+          if (!par) return null
           const relToPar = strokes - par
           return {
             hole: holeIndex + 1,
