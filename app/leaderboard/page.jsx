@@ -188,7 +188,7 @@ function ContestantsTab({ teams, golferMap, scorecardByName, pickCounts }) {
 
 // ─── Golfers tab ────────────────────────────────────────────────────────────
 
-function GolfersTab({ golfers, scorecardByName }) {
+function GolfersTab({ golfers, scorecardByName, pickCounts, totalTeams }) {
   const [expanded, setExpanded] = useState({})
 
   if (golfers.length === 0) {
@@ -224,6 +224,9 @@ function GolfersTab({ golfers, scorecardByName }) {
         const holesPlayed = card?.holesPlayed ?? golfer.holes_played ?? 0
         const position = card?.position ?? (golfer.position ? `T${golfer.position}` : null)
         const isOpen = expanded[golfer.id]
+        const pct = totalTeams > 0 && pickCounts?.[golfer.id] != null
+          ? Math.round((pickCounts[golfer.id] / totalTeams) * 100)
+          : null
 
         return (
           <div key={golfer.id} className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
@@ -237,6 +240,7 @@ function GolfersTab({ golfers, scorecardByName }) {
                     <div className="flex items-center gap-2">
                       <span className="font-semibold text-gray-800 truncate">{golfer.name}</span>
                       {isCut && <span className="text-xs bg-red-100 text-red-500 px-2 py-0.5 rounded-full shrink-0">CUT</span>}
+                      {pct !== null && <span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full shrink-0">{pct}%</span>}
                     </div>
                     <div className="text-xs text-gray-400 mt-0.5">
                       Tier {golfer.tier}
@@ -418,7 +422,7 @@ export default function LeaderboardPage() {
             </div>
           </>
         ) : (
-          <GolfersTab golfers={golfers} scorecardByName={scorecardByName} />
+          <GolfersTab golfers={golfers} scorecardByName={scorecardByName} pickCounts={pickCounts} totalTeams={teams.length} />
         )}
       </main>
     </div>
