@@ -16,6 +16,19 @@ function pointsDisplay(points) {
   return `${points}`
 }
 
+function toParDisplay(n) {
+  if (n === null || n === undefined) return '—'
+  if (n > 0) return `+${n}`
+  if (n === 0) return 'E'
+  return `${n}`
+}
+
+function toParColor(n) {
+  if (n > 0) return '#c0392b'
+  if (n < 0) return '#006747'
+  return '#555'
+}
+
 function ResultBadge({ result, points }) {
   const colors = {
     'Albatross': 'bg-purple-100 text-purple-800',
@@ -184,12 +197,21 @@ export default function MyScorePage() {
                         </div>
                       </div>
                     </div>
-                    <div className="flex items-center gap-3">
-                      <span
-                        className={`text-lg font-bold ${pointsColor(contestScore)}`}
-                      >
-                        {pointsDisplay(contestScore)} pts
-                      </span>
+                    <div className="flex items-center gap-4">
+                      {card?.scoreToPar !== null && card?.scoreToPar !== undefined && (
+                        <div className="text-right">
+                          <div className="text-lg font-bold" style={{ color: toParColor(card.scoreToPar) }}>
+                            {toParDisplay(card.scoreToPar)}
+                          </div>
+                          <div className="text-xs text-gray-400">to par</div>
+                        </div>
+                      )}
+                      <div className="text-right">
+                        <div className={`text-lg font-bold ${pointsColor(contestScore)}`}>
+                          {pointsDisplay(contestScore)}
+                        </div>
+                        <div className="text-xs text-gray-400">pool pts</div>
+                      </div>
                       <span className="text-gray-400 text-sm">{isOpen ? '▲' : '▼'}</span>
                     </div>
                   </div>
