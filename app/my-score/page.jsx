@@ -12,7 +12,6 @@ function pointsColor(points) {
 }
 
 function pointsDisplay(points) {
-  if (points > 0) return `+${points}`
   return `${points}`
 }
 
@@ -144,7 +143,7 @@ export default function MyScorePage() {
               className="text-2xl font-bold"
               style={{ color: teamTotal > 0 ? '#006747' : teamTotal < 0 ? '#c0392b' : '#666' }}
             >
-              {teamTotal > 0 ? `+${teamTotal}` : teamTotal === 0 ? 'E' : teamTotal} pts
+              {teamTotal} pts
             </div>
           </div>
         </div>

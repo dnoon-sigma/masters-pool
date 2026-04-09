@@ -24,7 +24,7 @@ function scoreColor(n) {
 function ContestScoreDisplay({ pts }) {
   if (pts === null || pts === undefined) return <span className="text-gray-400">—</span>
   const color = pts > 0 ? '#006747' : pts < 0 ? '#c0392b' : '#555'
-  return <span style={{ color }} className="font-bold">{pts > 0 ? `+${pts}` : pts === 0 ? 'E' : pts} pts</span>
+  return <span style={{ color }} className="font-bold">{pts} pts</span>
 }
 
 function PositionBadge({ pos }) {
@@ -62,7 +62,7 @@ function HoleByHole({ rounds }) {
                   {scoreDisplay(roundScoreToPar)} golf
                 </span>
                 <span style={{ color: roundPoints >= 0 ? '#006747' : '#c0392b' }} className="font-semibold">
-                  {roundPoints > 0 ? `+${roundPoints}` : roundPoints} contest pts
+                  {roundPoints} contest pts
                 </span>
               </div>
             </div>
@@ -84,7 +84,7 @@ function HoleByHole({ rounds }) {
                     <td className="py-1.5 pr-3 text-center font-bold" style={{ color: scoreColor(relToPar) }}>{strokes}</td>
                     <td className="py-1.5 pr-3"><ResultBadge result={result} /></td>
                     <td className="py-1.5 text-right font-bold" style={{ color: points > 0 ? '#006747' : points < 0 ? '#c0392b' : '#555' }}>
-                      {points > 0 ? `+${points}` : points}
+                      {points}
                     </td>
                   </tr>
                 ))}
@@ -129,7 +129,7 @@ function ContestantsTab({ teams, golferMap, scorecardByName, pickCounts }) {
               <div className="flex items-center gap-3">
                 <div className={`text-xl font-bold ${rank === 1 ? 'text-yellow-300' : ''}`}
                   style={rank !== 1 ? { color: team.total > 0 ? '#006747' : team.total < 0 ? '#c0392b' : '#666' } : {}}>
-                  {team.total > 0 ? `+${team.total}` : team.total === 0 ? 'E' : team.total} pts
+                  {team.total} pts
                 </div>
                 <span className="text-gray-400 text-sm w-6 text-center">{isOpen ? '▲' : '▼'}</span>
               </div>
@@ -158,7 +158,7 @@ function ContestantsTab({ teams, golferMap, scorecardByName, pickCounts }) {
                         <div className="text-red-400 font-semibold mt-1">CUT</div>
                       ) : (
                         <div className="mt-1" style={{ color: score > 0 ? '#006747' : score < 0 ? '#c0392b' : '#555' }}>
-                          <span className="font-bold">{score > 0 ? `+${score}` : score === 0 ? 'E' : score}</span>
+                          <span className="font-bold">{score}</span>
                         </div>
                       )}
                       {golfer?.position && !golfer.is_cut && (
@@ -257,7 +257,7 @@ function GolfersTab({ golfers, scorecardByName, pickCounts, totalTeams }) {
                   </div>
                   <div className="text-right">
                     <div className="font-bold text-base" style={{ color: golfer.score > 0 ? '#006747' : golfer.score < 0 ? '#c0392b' : '#555' }}>
-                      {golfer.score > 0 ? `+${golfer.score}` : golfer.score === 0 ? 'E' : golfer.score}
+                      {golfer.score}
                     </div>
                     <div className="text-xs text-gray-400">pool pts</div>
                   </div>
