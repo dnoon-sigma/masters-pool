@@ -227,6 +227,9 @@ function GolfersTab({ golfers, scorecardByName, pickCounts, totalTeams }) {
         const pct = totalTeams > 0
           ? Math.round(((pickCounts?.[golfer.id] ?? 0) / totalTeams) * 100)
           : null
+        const headshotUrl = card?.espnId
+          ? `https://a.espncdn.com/i/headshots/golf/players/full/${card.espnId}.png`
+          : null
 
         return (
           <div key={golfer.id} className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
@@ -236,6 +239,14 @@ function GolfersTab({ golfers, scorecardByName, pickCounts, totalTeams }) {
                   <span className="text-xs text-gray-400 w-8 shrink-0 text-center font-medium">
                     {position ?? index + 1}
                   </span>
+                  {headshotUrl && (
+                    <img
+                      src={headshotUrl}
+                      alt={golfer.name}
+                      className="w-9 h-9 rounded-full object-cover shrink-0 bg-gray-100"
+                      onError={e => { e.currentTarget.style.display = 'none' }}
+                    />
+                  )}
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
                       <span className="font-semibold text-gray-800 truncate">{golfer.name}</span>
